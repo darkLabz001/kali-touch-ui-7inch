@@ -1,27 +1,26 @@
-# Kali Touch UI
+# Kali Touch UI (7")
 
-Touchscreen-first control frontend for **Kali Linux on a Raspberry Pi** with a 4″
-display. Big touch targets, no keyboard needed, and every action runs the real Kali
-tool under the hood and streams its output live.
+Touchscreen-first control frontend for **Kali Linux on a Raspberry Pi** with a **7″
+800×480 DSI touchscreen**, with responsive support for 1024×600 landscape panels. Big touch targets, no keyboard needed, and
+every action runs the real Kali tool under the hood and streams its output live.
 
 Think of it as a launcher skin over your existing Kali tools: `nmap`, `masscan`,
 `airodump-ng`, `hydra`, `sqlmap`, `nikto`, `enum4linux` … grouped into sections you
 tap, with simple param fields and a live console.
 
 ```
-┌───────────────────────────────────────┐
-│ ◉ KALI TOUCH            ● LIVE        │
-├───────────────────────────────────────┤
-│ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐      │
-│ │Network│ │Recon│ │ Web │ │Brute│     │
-│ │ Scan │ │ &DNS│ │Attck│ │Force│     │
-│ │  ●7  │ │  ●6 │ │ ●6 │ │ ●3  │      │
-│ └─────┘ └─────┘ └─────┘ └─────┘      │
-│ ┌─────┐ ┌─────┐ ┌─────┐              │
-│ │WiFi │ │SMB/ │ │Util │              │
-│ │Attck│ │ Win │ │ity  │              │
-│ └─────┘ └─────┘ └─────┘              │
-└───────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│ ◉ KALI TOUCH                                  ● LIVE        │
+├────────────────────────────────────────────────────────────┤
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│ │Network   │ │ Recon    │ │ Web      │ │Brute    │        │
+│ │ Scan   ●7│ │&DNS   ●6 │ │Attack ●6 │ │Force  ●3│        │
+│ └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
+│ │WiFi      │ │SMB/Win   │ │Util      │                     │
+│ │Attack  ●6│ │     ●8   │ │ity    ●7 │                     │
+│ └──────────┘ └──────────┘ └──────────┘                     │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ## Architecture
@@ -102,48 +101,25 @@ echo "kali ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/kali-touchui
 sudo chmod 440 /etc/sudoers.d/kali-touchui
 ```
 
-## 3. Get the 4″ touchscreen working
+## 3. Configure the 7-inch display
 
-Kali ships the Raspberry Pi kernel + firmware, so most 4″ DSI/HDMI/SPI panels are
-supported via the standard device-tree overlays — sometimes with zero config.
+The verified device uses an **800×480 DSI touchscreen in landscape**. The kiosk
+selects the attached DSI panel at its native resolution, makes it primary, and
+maps its touch controller to that output. Legacy HDMI outputs are disabled during
+the kiosk session so an old portrait configuration cannot enlarge the desktop.
+The launcher sizes Chromium to the detected desktop instead of a fixed resolution.
 
-**If your panel is the common 4″ HDMI "DPI" type (e.g. Waveshare 4.0 "Lite"/XPT2046):**
-
-Set it up with the same `LCD-show` approach you already have:
-
-```bash
-git clone https://github.com/waveshare/LCD-show.git   # or reuse ../LCD-show
-cd LCD-show
-# for a 4.0" module, e.g.:
-sudo ./LCD4-show                     # adjust to your exact panel (LCD4, LCD4D, etc.)
-sudo reboot
-```
-
-This writes the right `dtoverlay=` into `/boot/config.txt` and installs the touch
-calibration. If your panel is **DSI** (Raspberry Pi official-ish 4″), skip LCD-show:
+Check the active display from the graphical session:
 
 ```bash
-# /boot/config.txt
-dtoverlay=vc4-kms-v3d
-dtoverlay=vc4-kms-dsi-7inch     # pick the overlay matching YOUR panel
-dtoverlay=goodix,interrupt=GPIO5,reset=GPIO6     # some 4" raytech-style panels
+xrandr --current
+xinput list
 ```
 
-Verify after reboot:
-
-```bash
-xrandr                                     # your chosen resolution is listed
-sudo dmesg | grep -iE "touch|goodix|xpt2046|stmpe"   # touch controller probed
-```
-
-The UI itself is resolution-agnostic (grid reflows), but for a 4″ panel you'll want
-**portrait** rotation so each section card stays gorilla-sized:
-
-```bash
-# /boot/config.txt  (HDMI/DPI panel)
-display_rotate=1          # or 3 for 270° portrait, per your panel orientation
-# touch rotation: see your panel docs / xinput-calibrator / xsetwacom mapping
-```
+The expected output is a primary DSI display at `800x480+0+0`. For HDMI-only
+installations, configure the display's native mode in the desktop first; the
+kiosk uses the current desktop dimensions. The responsive layout also supports
+1024×600 screens.
 
 ## 4. Deploy the UI to the Pi (boot → UI)
 
@@ -223,4 +199,31 @@ which fields to render straight from the template. Restart the service to reload
 | Touch offset / upside down | Double `display_rotate` is only video, not touch; calibrate touch separately (panel docs / `xinput-calibrator`). |
 | `sudo` denies tool | Re-add the NOPASSWD entry from §2 (some upgrades rewrite sudoers). |
 | Injection rejected | Fields accept only `[A-Za-z0-9._:/:[]-]` on purpose. Don't fight it — add a named param instead. |
-```
+
+## Detected 7-inch DSI display (800×480)
+
+The kiosk now sources `scripts/display.sh` to select an attached DSI panel at
+its native resolution, make it primary, and disable legacy HDMI outputs in the
+kiosk session. It maps the DSI touch controller to that output and uses the actual
+desktop dimensions for Chromium and the session background. This also handles
+old 480×800 HDMI overrides without changing boot firmware configuration.
+
+`web/assets/screen-fit.css` fits eleven home cards into three rows at 800×480.
+Long tool/settings pages scroll within the screen. `screen-fit.js` reserves the
+actual touch keyboard height so input fields remain reachable.
+
+On installations using `/usr/local/bin/kali-touch-session` or the fallback
+`/usr/local/share/kali-touch/kiosk.sh`, update those installed copies alongside
+`/opt/kali-touch-ui/scripts/`. Restart the graphical session to apply display
+selection and browser sizing.
+
+## Repository and Discord updates
+
+This 7-inch edition lives at https://github.com/darkLabz001/kali-touch-ui-7inch.
+Pushes are sent to Discord through a repository webhook configured under
+**Settings → Webhooks**. The integration subscribes to `push` events across the
+repository. Its private URL is stored in GitHub settings, never in source files.
+
+To change the destination, edit the repository webhook using Discord's
+[GitHub integration instructions](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
+Push notifications report repository changes; they do not deploy updates to the Pi.

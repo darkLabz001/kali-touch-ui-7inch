@@ -110,7 +110,7 @@ html, body {
 /* Home grid of section cards */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 14px;
 }
 
@@ -558,6 +558,19 @@ body.kbd-open .console { max-height: 24vh; }
   backdrop-filter: blur(3px);
 }
 .boot-skip:active { color: #fff; border-color: #4ee78e; background: rgba(0, 0, 0, 0.55); }
+
+/* Landscape panels (e.g. 7" 1024x600): tighten the splash so it stays centered */
+@media (orientation: landscape) and (max-height: 700px) {
+  .boot-splash { justify-content: flex-start; padding-top: 14vh; }
+  .ds-top { top: 18px; font-size: 10px; }
+  .ds-title { font-size: 46px; margin-top: 0; }
+  .ds-labs { margin-top: 10px; padding: 5px 22px; font-size: 16px; }
+  .ds-tagline { margin-top: 12px; }
+  .ds-status { margin-top: 26px; }
+  .ds-bar { margin-top: 8px; width: 260px; }
+  .ds-bootdots { margin-top: 12px; gap: 12px; }
+  .ds-bootdots i { width: 8px; height: 8px; }
+}
 
 /* ================= Terminal ================= */
 

@@ -4,6 +4,8 @@
 # Chromium fullscreen so the UI is the only thing on the touchscreen.
 set -u
 
+source /opt/kali-touch-ui/scripts/display.sh
+
 # Never let the display blank or sleep on the panel.
 if [ -n "${DISPLAY:-}" ]; then
     xset s off -dpms >/dev/null 2>&1 || true
@@ -45,20 +47,21 @@ while true; do
         --no-first-run \
         --check-for-update-interval=31536000 \
         --touch-events=enabled --disable-gpu --disable-gpu-compositing --use-gl=swiftshader --disable-software-rasterizer=0 --enable-unsafe-swiftshader --password-store=basic \
+        --force-device-scale-factor=1 \
         --disable-pinch \
         --overscroll-history-navigation-disabled \
         --pull-to-refresh=0 \
-        --window-size=480,800 --window-position=0,0 \
+        --window-size="$TOUCHUI_WIDTH,$TOUCHUI_HEIGHT" --window-position=0,0 \
         --app="$URL" 2>/tmp/kali-touch-kiosk.log &
     BROWSER_PID=$!
 
-    # Keep the kiosk window exactly edge-to-edge at 480x800 (xfwm4 adds a
+    # Keep the kiosk window exactly edge-to-edge at the detected screen size (xfwm4 adds a
     # frame otherwise) while the browser runs, and detect if it dies.
     while kill -0 "$BROWSER_PID" 2>/dev/null; do
         sleep 3
         WID=$(DISPLAY=:0 xdotool search --name "Kali Touch UI" 2>/dev/null | head -1)
         if [ -n "$WID" ]; then
-            DISPLAY=:0 xdotool windowraise "$WID" windowsize "$WID" 480 800 windowmove "$WID" 0 0 2>/dev/null
+            DISPLAY=:0 xdotool windowraise "$WID" windowsize "$WID" "$TOUCHUI_WIDTH" "$TOUCHUI_HEIGHT" windowmove "$WID" 0 0 2>/dev/null
         fi
     done
 

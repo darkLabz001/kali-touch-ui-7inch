@@ -22,7 +22,7 @@ dir = 1;
 while (true) {
     scanner.SetY (y);
     y = y + dir * 6;
-    if (y > 755) { dir = -1; }
+    if (y > 595) { dir = -1; }
     if (y < 0) { dir = 1; }
     sleep (0.03);
 }
