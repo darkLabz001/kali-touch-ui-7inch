@@ -29,6 +29,7 @@ def main():
     root.overrideredirect(True); root.attributes('-topmost', True)
     root.geometry(f'{width}x56+0+0'); root.configure(bg='#101b26')
     browser = keyboard = None
+    browser_window = None
     kiosk_ids = []
     closing = False
 
@@ -51,6 +52,10 @@ def main():
             xdo('windowmap', wid, 'windowraise', wid, 'windowfocus', wid)
         root.destroy()
 
+    def focus_browser():
+        if browser_window and not closing:
+            xdo('windowfocus', browser_window)
+
     def toggle_keyboard():
         nonlocal keyboard
         if keyboard and keyboard.poll() is None:
@@ -65,6 +70,7 @@ def main():
                 '--size', f'{width}x180', '-x', '0', '-y', str(height - 180)],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             key_button.configure(text='Hide keyboard')
+        root.after(500, focus_browser)
 
     options = dict(bg='#1d3345', fg='#d7ffe5', activebackground='#2e6344',
                    activeforeground='white', relief='flat', font=('sans', 14), padx=14)
@@ -88,7 +94,7 @@ def main():
         print('READY', flush=True)
         attempts = 0
         def check():
-            nonlocal attempts
+            nonlocal attempts, browser_window
             if closing:
                 return
             if browser.poll() is not None:
@@ -97,7 +103,7 @@ def main():
             if attempts < 30:
                 windows = xdo('search', '--onlyvisible', '--class', 'KaliTouchSocial').stdout.split()
                 if windows:
-                    wid = windows[-1]
+                    wid = browser_window = windows[-1]
                     subprocess.run(['xprop', '-id', wid, '-f', '_MOTIF_WM_HINTS', '32c',
                         '-set', '_MOTIF_WM_HINTS', '0x2,0x0,0x0,0x0,0x0'],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
@@ -105,6 +111,10 @@ def main():
                     attempts = 30
                 else:
                     attempts += 1
+            # A bare X11 session has no window manager to restore input focus
+            # after Onboard opens. Leave browser popups and other focused windows alone.
+            if browser_window and xdo('getwindowfocus').stdout.strip() in ('0', '1'):
+                focus_browser()
             root.after(500, check)
         root.after(500, check)
         root.mainloop()
