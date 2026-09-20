@@ -245,3 +245,20 @@ DNS records, domain registration details, and certificate-transparency names.
 Use `example.org` as its argument, or run it without arguments and enter a domain
 with **Send**. It saves text and JSON reports in `/home/kali/payloads/reports/`.
 See the [payload guide](payloads/README.md#domain-osint) for options and sources.
+
+## WiFite and the touch terminal
+
+At 800×480, the terminal uses a compact layout with its input and control keys on
+one row and the full keyboard below the output. The keyboard stays open while
+using terminal controls; the keyboard button in the top bar shows or hides it.
+Enter sends a response even when the input is empty, so prompts that ask you to
+press Enter work. Ctrl+C and the arrow keys remain available beside the input.
+Scroll up in the output to read earlier lines without new output pulling you
+back to the bottom; scroll to the bottom to follow output again.
+
+The browser regression check uses simulated terminal output and never launches
+wireless operations:
+
+```bash
+python3 tests/terminal_layout_test.py  # requires Playwright and Chromium
+```

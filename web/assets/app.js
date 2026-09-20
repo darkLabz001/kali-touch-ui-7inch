@@ -608,8 +608,9 @@ function termConnect(cmd) {
     } else if (rst) {
       rst.style.display = "none";
     }
+    const followOutput = out.scrollHeight - out.scrollTop - out.clientHeight < 32;
     tFeed(text);
-    out.scrollTop = out.scrollHeight;
+    if (followOutput) out.scrollTop = out.scrollHeight;
   };
   es.onerror = () => {};
 }
@@ -639,7 +640,7 @@ function showTerminal(title, cmd) {
   });
   const rst = el("button", "tk rst", "↻ restart");
   rst.id = "term-restart";
-  rst.onclick = () => termConnect(termInit && termInit.cmd);
+  rst.onclick = () => termConnect(cmd || (termInit && termInit.cmd));
   keys.appendChild(rst);
   page.appendChild(keys);
 
@@ -656,7 +657,6 @@ function showTerminal(title, cmd) {
 
   const send = () => {
     const v = inp.value;
-    if (v.length === 0) return;
     inp.value = "";
     api("/api/term/input", "POST", { data: v + "\r" }).catch(() => {});
   };
@@ -666,7 +666,7 @@ function showTerminal(title, cmd) {
   go.onclick = send;
   state.termSend = send;
   setTimeout(() => inp.focus(), 150);
-  termConnect(termInit && termInit.cmd);
+  termConnect(cmd || (termInit && termInit.cmd));
 }
 
 function onKeyHold(btn, repeat, delay = 350, interval = 60) {
