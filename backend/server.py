@@ -20,6 +20,7 @@ import threading
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from payloads import handle_payload_request
 from urllib.parse import urlparse, unquote
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web")
@@ -1127,6 +1128,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if handle_payload_request(self, "GET", path):
+            return
         if path == "/api/tools":
             tools = []
             for s, l, c, r in TOOLS:
@@ -1228,6 +1231,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if handle_payload_request(self, "POST", path):
+            return
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length) or b"{}")
         if path == "/api/run":

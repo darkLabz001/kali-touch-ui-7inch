@@ -25,6 +25,9 @@ if [ "$SRC_DIR" != "$APP" ]; then
     chmod +x "$APP/run.sh" "$APP/scripts/kiosk.sh"
 fi
 
+# User scripts live outside /opt so reinstalling the app preserves them.
+install -d -o kali -g kali -m 0755 /home/kali/payloads
+
 # --- 2. backend service ---------------------------------------------------
 echo "[*] Installing $SERVICE"
 install -m 0644 "$SRC_DIR/scripts/$SERVICE" /etc/systemd/system/$SERVICE

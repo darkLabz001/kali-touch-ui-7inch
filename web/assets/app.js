@@ -76,7 +76,7 @@ function showHome() {
     return card;
   };
   const ready = state.data.launchers.filter(x => x.exists).length;
-  grid.appendChild(mkc("self-built", "◈", "Custom Tools", "3 apps", "acc-cy", () => showCustomTools()));
+  grid.appendChild(mkc("self-built", "◈", "Custom Tools", "4 apps", "acc-cy", () => showCustomTools()));
   grid.appendChild(mkc("launcher", "⚒", "Click-Run Tools", ready + "/" + state.data.launchers.length + " ready", "acc-gr", () => showLaunchers()));
   state.data.sections.forEach(([id, title, ico]) => {
     const n = state.data.tools.filter(t => t.section === id).length;
@@ -137,10 +137,11 @@ function showCustomTools() {
   c.innerHTML = "";
   const head = el("div", "section-head");
   head.appendChild(el("h2", null, "◈ Custom Tools"));
-  head.appendChild(el("div", "hint", "3 apps · self-built"));
+  head.appendChild(el("div", "hint", "4 apps · self-built"));
   c.appendChild(head);
   const list = el("div", "tool-list");
   const apps = [
+    ["Py", "Python Payloads", "add your own .py scripts · run and view output", "#7ee0ff", showPayloads],
     ["◉", "Recon — PineAP", "live AP scan · signal graph · deauth", "#39ff14", showRecon],
     ["✕", "Handshake Hunter", "capture handshakes · crack with hashcat", "#00d9ff", showHunter],
     ["◎", "WiFi Radar", "live radar sweep of scanned APs", "#ffc93d", showRadar],

@@ -227,3 +227,15 @@ repository. Its private URL is stored in GitHub settings, never in source files.
 To change the destination, edit the repository webhook using Discord's
 [GitHub integration instructions](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
 Push notifications report repository changes; they do not deploy updates to the Pi.
+
+## User Python payloads
+
+Open **Custom Tools → Python Payloads** to add and run your own Python scripts.
+Copy `.py` files into `/home/kali/payloads` on the SD card, or choose **Add .py file**
+in the UI. Refresh to discover files copied while the app is open.
+
+Tap a script, optionally enter arguments, and press **RUN**. Output appears live;
+**Send** supplies a line of input and **STOP** terminates the script and its child
+processes. Scripts run as `kali`, with the payloads folder as their working folder.
+The live folder is outside the application, so app updates preserve your scripts.
+See [payloads/README.md](payloads/README.md) for details and a harmless example.
