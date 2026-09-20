@@ -18,6 +18,7 @@ The home screen groups tools by what you want to do:
 | Web | Web tools and portal apps |
 | Passwords | Login testing, hashes and wordlists |
 | My Scripts | Your Python payload library |
+| Entertainment | Offline games and social apps |
 
 Tabs keep related tools together inside each group. Back returns to the group
 and tab you came from. Settings and Terminal remain in the top bar.
@@ -208,7 +209,7 @@ kiosk session. It maps the DSI touch controller to that output and uses the actu
 desktop dimensions for Chromium and the session background. This also handles
 old 480×800 HDMI overrides without changing boot firmware configuration.
 
-`web/assets/navigation.css` fits six home groups into two rows at 800×480.
+`web/assets/navigation.css` fits seven home groups into two rows at 800×480.
 Long tool/settings pages scroll within the screen. `screen-fit.js` reserves the
 actual touch keyboard height so input fields remain reachable.
 
@@ -272,4 +273,44 @@ installed in the payload library. Back navigation never relaunches a running too
 
 ```bash
 python3 tests/navigation_test.py  # Playwright + Chromium; mocked tool operations
+```
+
+## Entertainment
+
+Open **Entertainment → Games** for two offline games:
+
+- **Snake**: swipe, use the large direction pad, or use arrow keys. Start, pause,
+  resume and restart; your best score stays in this browser.
+- **Memory Match**: find eight shuffled pairs, with move counting and a new-game
+  button. Leaving either game stops its timers.
+
+**Entertainment → Social** contains [Discord](https://discord.com/app),
+[Reddit](https://www.reddit.com/) and [YouTube](https://www.youtube.com/).
+Tap a card, then **Open** to launch its official site on the touchscreen. Internet
+and any required account sign-in are handled by the website. A persistent top bar
+provides **Back to Kali** and an Onboard **Keyboard** toggle. The separate browser
+profile is stored in `~/.config/kali-touch-social`; signing in saves that session
+on the device. Back closes that browser and restores the existing Kali window.
+
+Social uses the separate `touchui-entertainment.service`, bound only to
+`127.0.0.1:8082`. It accepts the three named sites only, from the local UI origin
+on port 8080. It does not restart the main backend or run Kali tools. Chromium,
+Python Tk, xdotool, xprop and Onboard must be installed in the graphical session.
+The browser helper currently targets the device's X11 desktop.
+
+For an existing installation, copy `backend/entertainment.py`,
+`scripts/social_browser.py` and the updated web assets, then install the service:
+
+```bash
+sudo install -m 0644 scripts/touchui-entertainment.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now touchui-entertainment
+```
+
+Games run without the helper or an Internet connection. Tests exercise full game
+rounds and mock Social launches, so they never visit an account or send messages:
+
+```bash
+python3 tests/test_entertainment.py
+python3 tests/entertainment_test.py  # Playwright + Chromium
 ```

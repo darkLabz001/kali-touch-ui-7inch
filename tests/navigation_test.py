@@ -41,7 +41,7 @@ def main():
 
         page.route('http://touch.test/**', route)
         page.goto('http://touch.test/')
-        expect(page.locator('.hub-card')).to_have_count(6)
+        expect(page.locator('.hub-card')).to_have_count(7)
         page.locator('#boot-splash').evaluate('(e)=>e.remove()')
         for width, height in ((800, 480), (1024, 600)):
             page.set_viewport_size({'width': width, 'height': height})
@@ -58,13 +58,13 @@ def main():
         assert next(e for e in entries if e['id'] == 'terminal:exiftool')['category'] == 'osint'
         assert next(e for e in entries if e['id'] == 'terminal:smbclient')['category'] == 'network'
         visible = []
-        for category in ['wireless', 'network', 'osint', 'web', 'passwords']:
+        for category in ['wireless', 'network', 'osint', 'web', 'passwords', 'entertainment']:
             page.locator(f'[data-category="{category}"]').click()
             for group in page.locator('.hub-tab').all_text_contents():
                 page.get_by_role('button', name=group, exact=True).click()
                 visible.extend(page.locator('[data-entry]').evaluate_all('(items)=>items.map(e=>e.dataset.entry)'))
             page.locator('#btn-back').click()
-            expect(page.locator('.hub-card')).to_have_count(6)
+            expect(page.locator('.hub-card')).to_have_count(7)
         assert set(visible) == set(ids), 'Some tools cannot be reached through visible groups'
         # Guided tool returns to its task group and selected tab.
         page.locator('[data-category="network"]').click()
@@ -87,7 +87,7 @@ def main():
         page.locator('#btn-back').click()
         expect(page.locator('.payload-page h2')).to_have_text('Python Payloads')
         page.locator('#btn-back').click()
-        expect(page.locator('.hub-card')).to_have_count(6)
+        expect(page.locator('.hub-card')).to_have_count(7)
         # WiFite opens the same command; leaving it never restarts it.
         page.locator('[data-category="wireless"]').click()
         page.get_by_role('button', name='WiFi apps', exact=True).click()
@@ -101,7 +101,7 @@ def main():
         assert len([w for w in writes if w[0] == '/api/term/start']) == 1
         assert not [w for w in writes if w[0] in ('/api/run', '/api/payloads/run')]
         assert not errors, errors
-        print(f'PASS: six home groups fit, all {len(ids)} tools reachable once, classification, payload paths, Back navigation, terminal preserved')
+        print(f'PASS: seven home groups fit, all {len(ids)} tools reachable once, classification, payload paths, Back navigation, terminal preserved')
         browser.close()
 
 

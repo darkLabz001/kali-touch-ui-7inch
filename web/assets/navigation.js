@@ -6,6 +6,7 @@
     { id: 'osint', title: 'OSINT', icon: '◎', description: 'Domain research, DNS & metadata', groups: ['Domain & DNS', 'File metadata'] },
     { id: 'web', title: 'Web', icon: '◍', description: 'Web tools & portals', groups: ['Web tools', 'Portals'] },
     { id: 'passwords', title: 'Passwords', icon: '▣', description: 'Login testing, hashes & wordlists', groups: ['Login testing', 'Hashes & wordlists'] },
+    { id: 'entertainment', title: 'Entertainment', icon: '♫', description: 'Offline games & social apps', groups: ['Games', 'Social'] },
     { id: 'scripts', title: 'My Scripts', icon: 'Py', description: 'Add and run your Python payloads', groups: [] },
   ];
   const content = document.getElementById('content');
@@ -24,6 +25,7 @@
     for (const name of cleanupNames) {
       if (typeof window[name] === 'function') window[name]();
     }
+    if (typeof window.leaveEntertainment === 'function') window.leaveEntertainment();
     if (typeof KB !== 'undefined') KB.hide();
     state.running = false;
   }
@@ -92,6 +94,16 @@
       title: 'Domain OSINT', description: 'DNS, registration & certificate reports', icon: 'Py',
       action: () => showPayload('domain_osint.py'), mode: 'script',
     });
+    for (const [id, title, description, icon, action] of [
+      ['snake', 'Snake', 'Chase the dots · swipe or use the arrow pad', '▰', () => showSnake()],
+      ['memory', 'Memory Match', 'Find eight pairs · beat your move count', '▦', () => showMemoryGame()],
+    ]) entries.push({ id: 'game:' + id, category: 'entertainment', group: 'Games', title, description, icon, action, mode: 'play' });
+    for (const [id, title, description, icon] of [
+      ['discord', 'Discord', 'Servers, communities & chat', '◉'],
+      ['reddit', 'Reddit', 'Communities & discussions', '◎'],
+      ['youtube', 'YouTube', 'Videos & music', '▶'],
+    ]) entries.push({ id: 'social:' + id, category: 'entertainment', group: 'Social', title,
+      description: description + ' · online', icon, action: () => showSocial(id, title), mode: 'open' });
     return entries.sort((a, b) => {
       const priority = entry => entry.id === 'terminal:wifite' ? -2 : entry.id.startsWith('app:') || entry.id.startsWith('payload:') ? -1 : 0;
       return priority(a) - priority(b) || a.title.localeCompare(b.title);
@@ -108,7 +120,7 @@
       card.dataset.category = category.id;
       card.append(el('span', 'ico', category.icon), el('span', 't', category.title),
         el('span', 'hub-description', category.description));
-      const count = category.id === 'scripts' ? (payloadNames.length ? payloadNames.length + ' scripts' : 'Your script library') : entries.filter(e => e.category === category.id).length + ' tools';
+      const count = category.id === 'entertainment' ? '2 games · 3 social apps' : category.id === 'scripts' ? (payloadNames.length ? payloadNames.length + ' scripts' : 'Your script library') : entries.filter(e => e.category === category.id).length + ' tools';
       card.appendChild(el('span', 'hub-count', count));
       card.onclick = () => category.id === 'scripts' ? showPayloads() : openCategory(category.id);
       grid.appendChild(card);
@@ -183,7 +195,7 @@
     };
   }
 
-  for (const name of ['showRun', 'showTerminal', 'showSettings', 'showSection']) wrap(name);
+  for (const name of ['showRun', 'showTerminal', 'showSettings', 'showSection', 'showSnake', 'showMemoryGame', 'showSocial']) wrap(name);
   for (const definition of definitions) if (definition[4].name !== 'showPayloads') wrap(definition[4].name);
   wrap('showPayloads', 'scripts'); wrap('showPayload', 'payload');
   window.showHome = home;

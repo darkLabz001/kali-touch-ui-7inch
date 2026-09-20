@@ -25,3 +25,8 @@
   .hub-home { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hub-card { min-height: 150px; }
 }
+
+@media (min-width: 740px) {
+  .hub-home { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hub-card .t { font-size: 17px; }
+}

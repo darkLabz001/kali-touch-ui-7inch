@@ -34,6 +34,11 @@ install -m 0644 "$SRC_DIR/scripts/$SERVICE" /etc/systemd/system/$SERVICE
 systemctl daemon-reload
 systemctl enable $SERVICE
 
+# Separate local-only Social launcher; games need no helper.
+install -m 0644 "$SRC_DIR/scripts/touchui-entertainment.service" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now touchui-entertainment.service
+
 # --- 3. auto-login ---------------------------------------------------------
 LIGHTDM_CONF=/etc/lightdm/lightdm.conf
 if [ ! -f "$LIGHTDM_CONF" ] || ! grep -q '^autologin-user=' "$LIGHTDM_CONF"; then
