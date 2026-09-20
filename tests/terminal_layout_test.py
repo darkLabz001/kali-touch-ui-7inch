@@ -42,7 +42,7 @@ def main():
         page.goto('http://touch.test/')
         page.locator('.card').first.wait_for()
         page.locator('#boot-splash').evaluate('(e)=>e.remove()')
-        page.get_by_text('Click-Run Tools', exact=True).click()
+        page.get_by_text('Wireless', exact=True).click()
         page.get_by_text('WiFite — auto attack', exact=True).click()
         expect(page.locator('body')).to_have_class('terminal-active kbd-open')
         assert starts[-1]['cmd'] == 'sudo -n /usr/sbin/wifite'

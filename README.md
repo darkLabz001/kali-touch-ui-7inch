@@ -8,20 +8,20 @@ Think of it as a launcher skin over your existing Kali tools: `nmap`, `masscan`,
 `airodump-ng`, `hydra`, `sqlmap`, `nikto`, `enum4linux` … grouped into sections you
 tap, with simple param fields and a live console.
 
-```
-┌────────────────────────────────────────────────────────────┐
-│ ◉ KALI TOUCH                                  ● LIVE        │
-├────────────────────────────────────────────────────────────┤
-│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
-│ │Network   │ │ Recon    │ │ Web      │ │Brute    │        │
-│ │ Scan   ●7│ │&DNS   ●6 │ │Attack ●6 │ │Force  ●3│        │
-│ └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
-│ ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
-│ │WiFi      │ │SMB/Win   │ │Util      │                     │
-│ │Attack  ●6│ │     ●8   │ │ity    ●7 │                     │
-│ └──────────┘ └──────────┘ └──────────┘                     │
-└────────────────────────────────────────────────────────────┘
-```
+The home screen groups tools by what you want to do:
+
+| Group | Contents |
+|---|---|
+| Wireless | WiFite, WiFi apps and commands, Bluetooth |
+| Network | Scanning, packet capture, utilities, Windows and SMB |
+| OSINT | Domain OSINT, DNS research, theHarvester, file metadata |
+| Web | Web tools and portal apps |
+| Passwords | Login testing, hashes and wordlists |
+| My Scripts | Your Python payload library |
+
+Tabs keep related tools together inside each group. Back returns to the group
+and tab you came from. Settings and Terminal remain in the top bar.
+
 
 ## Architecture
 
@@ -208,7 +208,7 @@ kiosk session. It maps the DSI touch controller to that output and uses the actu
 desktop dimensions for Chromium and the session background. This also handles
 old 480×800 HDMI overrides without changing boot firmware configuration.
 
-`web/assets/screen-fit.css` fits eleven home cards into three rows at 800×480.
+`web/assets/navigation.css` fits six home groups into two rows at 800×480.
 Long tool/settings pages scroll within the screen. `screen-fit.js` reserves the
 actual touch keyboard height so input fields remain reachable.
 
@@ -230,7 +230,7 @@ Push notifications report repository changes; they do not deploy updates to the 
 
 ## User Python payloads
 
-Open **Custom Tools → Python Payloads** to add and run your own Python scripts.
+Open **My Scripts** to add and run your own Python scripts.
 Copy `.py` files into `/home/kali/payloads` on the SD card, or choose **Add .py file**
 in the UI. Refresh to discover files copied while the app is open.
 
@@ -261,4 +261,15 @@ wireless operations:
 
 ```bash
 python3 tests/terminal_layout_test.py  # requires Playwright and Chromium
+```
+
+## Menu navigation checks
+
+`web/assets/navigation.js` groups the backend tool registry, terminal launchers,
+and available custom apps into the same task categories. The existing runners
+handle launches. The Domain OSINT shortcut appears when `domain_osint.py` is
+installed in the payload library. Back navigation never relaunches a running tool.
+
+```bash
+python3 tests/navigation_test.py  # Playwright + Chromium; mocked tool operations
 ```

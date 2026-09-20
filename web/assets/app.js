@@ -130,6 +130,15 @@ function launchBtn(l) {
   return b;
 }
 
+function customApps() {
+  return [
+    ["Py", "Python Payloads", "add your own .py scripts · run and view output", "#7ee0ff", showPayloads],
+    ["◉", "Recon — PineAP", "live AP scan · signal graph · deauth", "#39ff14", showRecon],
+    ["✕", "Handshake Hunter", "capture handshakes · crack with hashcat", "#00d9ff", showHunter],
+    ["◎", "WiFi Radar", "live radar sweep of scanned APs", "#ffc93d", showRadar],
+  ];
+}
+
 function showCustomTools() {
   state.section = null; state.tool = null; state.settings = false; state.terminal = false; state.running = false;
   const c = document.querySelector(".content");
@@ -140,12 +149,7 @@ function showCustomTools() {
   head.appendChild(el("div", "hint", "4 apps · self-built"));
   c.appendChild(head);
   const list = el("div", "tool-list");
-  const apps = [
-    ["Py", "Python Payloads", "add your own .py scripts · run and view output", "#7ee0ff", showPayloads],
-    ["◉", "Recon — PineAP", "live AP scan · signal graph · deauth", "#39ff14", showRecon],
-    ["✕", "Handshake Hunter", "capture handshakes · crack with hashcat", "#00d9ff", showHunter],
-    ["◎", "WiFi Radar", "live radar sweep of scanned APs", "#ffc93d", showRadar],
-  ];
+  const apps = customApps();
   apps.forEach(([ico, title, sub, col, fn]) => {
     const b = el("div", "tool-btn");
     const ch = el("div", "ch", ico);

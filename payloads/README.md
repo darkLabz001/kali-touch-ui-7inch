@@ -1,7 +1,7 @@
 # Python payloads
 
 Copy `hello.py` into `/home/kali/payloads/` on the device, then open
-**Custom Tools → Python Payloads**. You can also use **Add .py file** in the UI,
+**My Scripts**. You can also use **Add .py file** in the UI,
 including from another computer browsing to `http://<device-ip>:8080`.
 
 Scripts run with Python 3 as the backend's user (`kali`), with the payloads folder
