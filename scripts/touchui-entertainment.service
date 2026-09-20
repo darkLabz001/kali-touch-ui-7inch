@@ -1,5 +1,5 @@
 [Unit]
-Description=Kali Touch Entertainment browser helper
+Description=Kali Touch browser, dashboard and device controls
 After=graphical.target
 
 [Service]

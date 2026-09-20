@@ -1,6 +1,7 @@
 /* Group all launch styles by task while preserving each tool's existing runner. */
 (() => {
   const categories = [
+    { id: 'dashboard', title: 'Dashboard', icon: '◴', description: 'Live traffic, device health & sessions', groups: [] },
     { id: 'wireless', title: 'Wireless', icon: '✱', description: 'WiFi, Bluetooth & field tools', groups: ['WiFi apps', 'WiFi commands', 'Bluetooth'] },
     { id: 'network', title: 'Network', icon: '◉', description: 'Scanning, packet capture & SMB', groups: ['Scanning', 'Network utilities', 'Windows & SMB', 'Other tools'] },
     { id: 'osint', title: 'OSINT', icon: '◎', description: 'Domain research, DNS & metadata', groups: ['Domain & DNS', 'File metadata'] },
@@ -25,6 +26,7 @@
     for (const name of cleanupNames) {
       if (typeof window[name] === 'function') window[name]();
     }
+    if (typeof window.leaveDashboard === 'function') window.leaveDashboard();
     if (typeof window.leaveEntertainment === 'function') window.leaveEntertainment();
     if (typeof KB !== 'undefined') KB.hide();
     state.running = false;
@@ -120,9 +122,9 @@
       card.dataset.category = category.id;
       card.append(el('span', 'ico', category.icon), el('span', 't', category.title),
         el('span', 'hub-description', category.description));
-      const count = category.id === 'entertainment' ? '2 games · 3 social apps' : category.id === 'scripts' ? (payloadNames.length ? payloadNames.length + ' scripts' : 'Your script library') : entries.filter(e => e.category === category.id).length + ' tools';
+      const count = category.id === 'dashboard' ? 'Live device overview' : category.id === 'entertainment' ? '2 games · 3 social apps' : category.id === 'scripts' ? (payloadNames.length ? payloadNames.length + ' scripts' : 'Your script library') : entries.filter(e => e.category === category.id).length + ' tools';
       card.appendChild(el('span', 'hub-count', count));
-      card.onclick = () => category.id === 'scripts' ? showPayloads() : openCategory(category.id);
+      card.onclick = () => category.id === 'dashboard' ? openDashboard() : category.id === 'scripts' ? showPayloads() : openCategory(category.id);
       grid.appendChild(card);
     }
     content.appendChild(grid);
@@ -148,7 +150,13 @@
     return button;
   }
 
+  function openDashboard() {
+    prepare(); current = { kind: 'dashboard', hub: null, back: 'home' };
+    showDashboard();
+  }
+
   function openCategory(id) {
+    if (id === 'dashboard') { openDashboard(); return; }
     const category = categories.find(c => c.id === id);
     if (!category || id === 'scripts') { showPayloads(); return; }
     prepare(); current = { kind: 'category', hub: id, back: 'home' };
@@ -215,7 +223,7 @@
     event.preventDefault(); event.stopImmediatePropagation(); back();
   }, true);
 
-  window.TouchNavigation = { categories, catalogue, openCategory, home, back };
+  window.TouchNavigation = { categories, catalogue, openCategory, openDashboard, home, back };
   if (state.data) home();
   function refreshLibrary() {
     if (libraryRequest) return;

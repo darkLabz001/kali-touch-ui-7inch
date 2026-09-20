@@ -12,6 +12,7 @@ The home screen groups tools by what you want to do:
 
 | Group | Contents |
 |---|---|
+| Dashboard | Live traffic, system health and tracked sessions |
 | Wireless | WiFite, WiFi apps and commands, Bluetooth |
 | Network | Scanning, packet capture, utilities, Windows and SMB |
 | OSINT | Domain OSINT, DNS research, theHarvester, file metadata |
@@ -209,7 +210,7 @@ kiosk session. It maps the DSI touch controller to that output and uses the actu
 desktop dimensions for Chromium and the session background. This also handles
 old 480×800 HDMI overrides without changing boot firmware configuration.
 
-`web/assets/navigation.css` fits seven home groups into two rows at 800×480.
+`web/assets/navigation.css` fits eight home groups into two rows at 800×480.
 Long tool/settings pages scroll within the screen. `screen-fit.js` reserves the
 actual touch keyboard height so input fields remain reachable.
 
@@ -298,7 +299,7 @@ on port 8080. It does not restart the main backend or run Kali tools. Chromium,
 Python Tk, xdotool, xprop and Onboard must be installed in the graphical session.
 The browser helper currently targets the device's X11 desktop.
 
-For an existing installation, copy `backend/entertainment.py`,
+For an existing installation, copy `backend/entertainment.py`, `backend/device.py`,
 `scripts/social_browser.py` and the updated web assets, then install the service:
 
 ```bash
@@ -313,4 +314,46 @@ rounds and mock Social launches, so they never visit an account or send messages
 ```bash
 python3 tests/test_entertainment.py
 python3 tests/entertainment_test.py  # Playwright + Chromium
+```
+
+## Live dashboard and quick controls
+
+Open **Dashboard** on the home screen for receive/send traffic, CPU usage, memory,
+storage, temperature, WiFi signal and tracked tool sessions. The graph builds a
+60-second history from real interface byte counters, sampled about every two
+seconds. It follows the default-route interface. There is no synthetic activity:
+first samples show a dash, and a lost helper connection marks the view **STALE**.
+Tracking covers terminal, Python payloads, Recon, capture and installed custom
+app sessions; it does not claim to enumerate every Linux process.
+
+**Swipe down from the top bar**, or tap **⌄**, to open quick controls:
+
+- Brightness (10–100%, keeping the panel visible), volume and mute.
+- WiFi settings, Home and Dashboard shortcuts.
+- Keyboard show/hide for the current text field, preserving draft terminal input.
+- Screenshot: closes the panel and saves the screen under
+  `~/Pictures/KaliTouch/` on the device.
+
+Swipe up on the panel heading, tap **Done**, or tap outside it to return.
+Unavailable hardware controls are disabled. Brightness and audio changes apply
+to the current device state; they are not startup presets. The audio control uses
+PipeWire's current default output through `wpctl`.
+
+Metrics and device controls share the existing local-only
+`touchui-entertainment.service` on port 8082. They accept requests from the
+local touchscreen UI on port 8080, with origin checks, bounded numeric inputs and
+fixed commands. Brightness uses the existing passwordless sudo permission for
+writing the detected backlight; no new sudoers rule is installed. Screenshot
+files are private to the device user. No tool starts when opening the dashboard.
+Remote browser visits retain the tool menus; hardware controls and detailed
+metrics require opening the UI on the touchscreen.
+
+The separate frontend files are `web/assets/dashboard.js` and `dashboard.css`.
+Copy `backend/device.py` and the updated `backend/entertainment.py` alongside them,
+then restart only `touchui-entertainment` while the Social browser is closed.
+The main Kali backend does not need to restart for this update.
+
+```bash
+python3 tests/test_device.py
+python3 tests/dashboard_test.py  # Playwright + Chromium; all controls mocked
 ```

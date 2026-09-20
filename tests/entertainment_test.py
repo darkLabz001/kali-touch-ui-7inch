@@ -24,7 +24,7 @@ def main():
             r.fulfill(json={'ok': True})
         page.route('http://127.0.0.1:8082/**', social_route)
         page.goto('http://127.0.0.1:8080/')
-        expect(page.locator('.hub-card')).to_have_count(7)
+        expect(page.locator('.hub-card')).to_have_count(8)
         page.locator('#boot-splash').evaluate('(e)=>e.remove()')
         page.clock.install()
         page.locator('[data-category=entertainment]').tap()
