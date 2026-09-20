@@ -239,3 +239,9 @@ Tap a script, optionally enter arguments, and press **RUN**. Output appears live
 processes. Scripts run as `kali`, with the payloads folder as their working folder.
 The live folder is outside the application, so app updates preserve your scripts.
 See [payloads/README.md](payloads/README.md) for details and a harmless example.
+
+The included [`domain_osint.py`](payloads/domain_osint.py) payload collects public
+DNS records, domain registration details, and certificate-transparency names.
+Use `example.org` as its argument, or run it without arguments and enter a domain
+with **Send**. It saves text and JSON reports in `/home/kali/payloads/reports/`.
+See the [payload guide](payloads/README.md#domain-osint) for options and sources.

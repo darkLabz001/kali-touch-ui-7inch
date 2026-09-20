@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .DS_Store
 *.swp
+
+# Local OSINT reports
+payloads/reports/
