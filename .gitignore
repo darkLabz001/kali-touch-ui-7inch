@@ -5,3 +5,6 @@ __pycache__/
 
 # Local OSINT reports
 payloads/reports/
+
+# Generated edition bundles
+dist/

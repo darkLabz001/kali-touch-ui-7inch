@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Kali Touch UI
+Comment=Darksec touchscreen session
+Exec=/usr/local/bin/kali-touch-session
+Type=XSession

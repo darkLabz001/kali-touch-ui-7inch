@@ -1,28 +1,35 @@
-# DarkSec Labs plymouth script theme
-# Dark branded boot screen with a moving scanline.
-
-Window.SetBackgroundTopColor (0.01, 0.04, 0.025);
-Window.SetBackgroundBottomColor (0.0, 0.0, 0.0);
-
-boot_image = Image ("darksec.png");
-
-sprite = Sprite ();
-sprite.SetImage (boot_image);
-sprite.SetX (Window.GetWidth () / 2 - boot_image.GetWidth () / 2);
-sprite.SetY (Window.GetHeight () / 2 - boot_image.GetHeight () / 2);
-
-scan_image = Image ("scanline.png");
-scanner = Sprite ();
-scanner.SetImage (scan_image);
-scanner.SetX (Window.GetWidth () / 2 - scan_image.GetWidth () / 2);
-
+// Non-blocking Darksec animation; Plymouth owns the refresh loop.
+Window.SetBackgroundTopColor(0.01, 0.035, 0.02);
+Window.SetBackgroundBottomColor(0.01, 0.035, 0.02);
+image = Image("darksec.png");
+scale = Window.GetWidth() / image.GetWidth();
+if (Window.GetHeight() / image.GetHeight() < scale) scale = Window.GetHeight() / image.GetHeight();
+image = image.Scale(image.GetWidth() * scale, image.GetHeight() * scale);
+logo = Sprite(image);
+logo.SetPosition((Window.GetWidth() - image.GetWidth()) / 2, (Window.GetHeight() - image.GetHeight()) / 2, 0);
+scan = Image("scanline.png").Scale(Window.GetWidth(), 3);
+scanner = Sprite(scan);
+scanner.SetZ(2);
 y = 0;
-dir = 1;
-
-while (true) {
-    scanner.SetY (y);
-    y = y + dir * 6;
-    if (y > 595) { dir = -1; }
-    if (y < 0) { dir = 1; }
-    sleep (0.03);
+direction = 1;
+fun refresh() {
+    global.y += global.direction * 3;
+    if (global.y >= Window.GetHeight()) global.direction = -1;
+    if (global.y <= 0) global.direction = 1;
+    scanner.SetY(global.y);
 }
+Plymouth.SetRefreshFunction(refresh);
+// Retain disk-unlock prompts when used on encrypted installations.
+fun message(text) {
+    global.prompt = Sprite(Image.Text(text, 0.65, 1, 0.75));
+    global.prompt.SetPosition(12, Window.GetHeight() - 45, 100);
+}
+fun password(prompt, bullets) {
+    stars = "";
+    for (i = 0; i < bullets; i++) stars += "*";
+    message(prompt + " " + stars);
+}
+fun normal() { if (global.prompt) global.prompt.SetOpacity(0); }
+Plymouth.SetMessageFunction(message);
+Plymouth.SetDisplayPasswordFunction(password);
+Plymouth.SetDisplayNormalFunction(normal);

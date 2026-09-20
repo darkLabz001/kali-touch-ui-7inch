@@ -1,4 +1,4 @@
-# Kali Touch UI (7")
+# Kali Touch UI — 7-inch, 4-inch and 3.5-inch editions
 
 Touchscreen-first control frontend for **Kali Linux on a Raspberry Pi** with a **7″
 800×480 DSI touchscreen**, with responsive support for 1024×600 landscape panels. Big touch targets, no keyboard needed, and
@@ -50,9 +50,9 @@ kali-touch-ui/
 │       ├── style.css        # dark touch UI
 │       └── app.js           # SPA: home → section → tool → live console
 ├── scripts/
-│   ├── install.sh           # deploy to /opt, autologin, kiosk autostart
+│   ├── install.sh           # deploy to /opt, dedicated session, Plymouth
 │   ├── kali-touchui.service # backend systemd service (starts on boot)
-│   ├── kali-touch-kiosk.desktop # X session autostart entry
+│   ├── kali-touch.desktop   # dedicated LightDM session
 │   └── kiosk.sh             # waits for backend, opens Chromium fullscreen
 ├── run.sh                   # run in place (python3 + optional kiosk browser)
 └── README.md
@@ -123,41 +123,107 @@ installations, configure the display's native mode in the desktop first; the
 kiosk uses the current desktop dimensions. The responsive layout also supports
 1024×600 screens.
 
-## 4. Deploy the UI to the Pi (boot → UI)
+## 4. Install a screen edition
+
+Download the matching application bundle from this repository's
+[releases](https://github.com/darkLabz001/kali-touch-ui-7inch/releases).
+These are **application bundles, not flashable SD-card images**. Start with Kali,
+a working X11 display/touch driver, LightDM, and the `kali` user. The installer
+requires Chromium, Python 3 with Tk, xdotool, xrandr, xprop, xset, curl and flock.
+Onboard supplies the Social browser keyboard. It does not install panel drivers
+or modify firmware overlays.
+
+| Edition | Browser-tested screen sizes | Layout |
+|---|---|---|
+| `7inch` | 800×480, 1024×600 | Eight home groups; full touch keyboard |
+| `4inch` | 800×480, 480×800 | Larger two-column home menu; scrolling pages |
+| `35inch` | 480×320, 320×480 | Compact terminal and four-row landscape keyboard |
+
+Physical size alone does not specify resolution or driver. The kiosk uses the
+current display dimensions; configure HDMI/SPI display rotation and touch in
+Kali before installing. The existing 7-inch DSI setup has been used on hardware,
+but **this startup revision has not yet completed a hardware reboot test**.
+The 4-inch and 3.5-inch editions have browser layout tests only. Release
+candidates carry `hardware_verified: false` until that testing is complete.
+
+Extract your downloaded archive, enter its directory and run:
 
 ```bash
-scp -r kali-touch-ui kali@<pi-ip>:/tmp/
-ssh kali@<pi-ip>
-sudo mv /tmp/kali-touch-ui /opt/kali-touch-ui
-sudo bash /opt/kali-touch-ui/scripts/install.sh    # boot-to-kiosk setup
+sudo bash scripts/install.sh
+# Or select an edition explicitly from a source checkout:
+sudo bash scripts/install.sh --edition 35inch
 ```
 
-`install.sh` does four things:
+The installer backs up existing application and startup configuration under
+`/var/backups/kali-touch-ui/`, installs into `/opt/kali-touch-ui`, and selects a
+single dedicated LightDM kiosk session. It disables the old duplicate XDG kiosk
+autostart entry. It starts missing backend/helper services without restarting
+active sessions. Reboot when ready to activate the new session and backend code.
+Your `/home/kali/payloads`, Social login profile and screenshots remain outside
+the application. Edition selection persists in `/etc/kali-touch-ui/kiosk.conf`.
 
-1. Copies the app to `/opt/kali-touch-ui`.
-2. Installs + enables `kali-touchui.service` — the backend **starts on every boot**
-   (before login, no display needed).
-3. Enables **lightdm auto-login** for the `kali` user (no login prompt ever).
-4. Installs `kali-touch-kiosk.desktop` into `/etc/xdg/autostart`, so once the
-   desktop session starts, `kiosk.sh` opens **Chromium fullscreen kiosk** pointing
-   at `http://127.0.0.1:8080`.
+### Darksec startup
 
-**Result: power on → UI is on the touchscreen, nothing else.** The browser waits up
-to 30s for the backend (in case the pipe is still warming up), then hides everything
-chrome-related and shows only the app.
+The early Plymouth splash keeps the Darksec image and animated scanline. Its
+refresh callback does not block boot. When system splash is configured, Chromium
+hands off to the UI without replaying the browser boot animation. Installations
+without Plymouth/splash retain the browser animation. Display setup runs once,
+a process lock prevents duplicate kiosk owners, and the backend starts without
+waiting for network-online. Home appears when its tools have loaded; optional
+wordlists no longer delay it. A late backend retries automatically.
 
-Backend only, no reboot needed to test:
+On the original device, the recorded baseline was **49.391 seconds to the system
+startup target**, with the graphical session opening around **65 seconds**.
+Legacy Ethernet DHCP took 28.574 seconds while WiFi was already managed by
+NetworkManager. There is no measured after-change boot time yet.
+
+The optional network optimizer is separate from installation. First inspect:
 
 ```bash
-sudo systemctl enable --now kali-touchui
+python3 tools/optimize_boot.py
 ```
 
-To get back to a normal desktop on the device: close the kiosk with **Alt+F4**, or
-disable the autostart entry any time with:
+It accepts only the known legacy DHCP-only `eth0` configuration, no Ethernet
+carrier, and active NetworkManager WiFi default routes (including IPv6). It
+refuses custom network configurations and Ethernet connections. If eligible:
 
 ```bash
-sudo rm /etc/xdg/autostart/kali-touch-kiosk.desktop
+sudo python3 tools/optimize_boot.py --apply
 ```
+
+This backs up the Ethernet file, disables the legacy networking service for the
+next boot, and reloads NetworkManager configuration. It does not disconnect WiFi
+or reboot. Run the printed `rollback.sh` with sudo to restore that configuration.
+Do not force eligibility checks on a different network setup.
+
+To investigate boot timing after restarting:
+
+```bash
+systemd-analyze
+systemd-analyze critical-chain graphical.target
+systemctl status kali-touchui touchui-entertainment lightdm
+```
+
+To restore an earlier installation, restore the application archive and affected
+startup configuration from the timestamped backup. Restore the earlier Plymouth
+theme selection and run `sudo update-initramfs -u` before rebooting. To return to
+a desktop, set LightDM's autologin session to an installed desktop from
+`/usr/share/xsessions/` in both its main config and `99-kali-touch.conf`, or remove
+the Kali Touch autologin settings and log in normally.
+
+### Building the three release bundles
+
+From a clean, committed checkout:
+
+```bash
+python3 tools/build_releases.py 0.3.0-rc1
+(cd dist && sha256sum -c SHA256SUMS)
+```
+
+Each bundle includes an edition default and an `EDITION.json` identifying the
+source commit, tested viewport sizes and hardware verification status. Only
+tracked project files are packaged; local reports, browser sessions and device
+backups are excluded. Separate release entries share one source repository.
 
 ## 5. Use it
 

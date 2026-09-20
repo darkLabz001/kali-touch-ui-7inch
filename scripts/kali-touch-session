@@ -1,12 +1,15 @@
-#!/bin/bash
-# Kali Touch kiosk session: paint the boot still on the X root so the gap
-# between splash and Chromium is never a black screen.
-export DISPLAY=:0
+#!/usr/bin/env bash
+# One display setup and one kiosk owner. No network fetch/reset during boot.
+set -u
+export DISPLAY="${DISPLAY:-:0}"
 source /opt/kali-touch-ui/scripts/display.sh
-if [ -f /opt/kali-touch-ui/web/media/boot-frame.png ]; then
-    /usr/bin/convert /opt/kali-touch-ui/web/media/boot-frame.png -resize "${TOUCHUI_WIDTH}x${TOUCHUI_HEIGHT}!" /tmp/kali-touch-bg.png
-    /usr/bin/display -window root /tmp/kali-touch-bg.png 2>/dev/null
+if command -v xsetroot >/dev/null 2>&1; then xsetroot -solid '#030905' || true; fi
+# Use the same Darksec art as Plymouth while Chromium creates its first window.
+if command -v display >/dev/null 2>&1; then
+    display -resize "${TOUCHUI_WIDTH}x${TOUCHUI_HEIGHT}>" -window root /opt/kali-touch-ui/plymouth/darksec/darksec.png >/dev/null 2>&1 &
+    BACKGROUND_PID=$!
+    ( sleep 2; kill "$BACKGROUND_PID" 2>/dev/null || true ) &
 fi
-
-# Kiosk launcher (expects to replace this session process).
-exec /opt/kali-touch-ui/scripts/kiosk.sh
+KIOSK=/opt/kali-touch-ui/scripts/kiosk.sh
+[ -x "$KIOSK" ] || KIOSK=/usr/local/share/kali-touch/kiosk.sh
+exec "$KIOSK"
