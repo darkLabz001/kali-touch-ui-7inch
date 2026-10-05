@@ -144,7 +144,7 @@
       try {
         const response = await fetch('/api/sysinfo', { signal: abort.signal });
         const info = await response.json();
-        if (active) { name.textContent = info.ssid || info.hostname || 'CONNECTION'; address.textContent = info.ip || 'No IP address'; }
+        if (active) { name.textContent = info.ssid || info.hostname || 'CONNECTION'; address.textContent = 'IP address in Settings'; }
       } catch (_) { /* Metrics poll reports connection errors. */ }
       if (active) taskTimer = setTimeout(tasks, 6000);
     }
@@ -184,7 +184,75 @@
   });
   const muteButton = button('♫ Mute', () => setControl('mute', !muted));
   shortcuts.append(homeButton, dashboardButton, wifiButton, keyboardButton, screenshotButton, muteButton);
-  panel.append(sliders, shortcuts, controlStatus); shade.appendChild(panel); document.body.appendChild(shade);
+  let recording = null, recordingPending = false, recordingTimer = null, recordingRequest = 0;
+  const recorder = el('div', 'deck-recorder');
+  const recordButton = button('● Record screen', () => recordingAction(recording?.state === 'recording' ? 'record_stop' : 'record_start'));
+  const sendButton = button('Send to Discord', () => recordingAction('record_send'));
+  recordButton.disabled = sendButton.disabled = true;
+  const recordInfo = el('div', 'deck-record-info', 'MP4 · up to 2 min · no audio');
+  recordInfo.setAttribute('role', 'status');
+  recorder.append(recordButton, sendButton, recordInfo);
+  panel.append(sliders, shortcuts, recorder, controlStatus); shade.appendChild(panel); document.body.appendChild(shade);
+  const recordBadge = button('● REC', () => openControls(), 'deck-record-badge');
+  recordBadge.hidden = true; recordBadge.setAttribute('aria-label', 'Screen recording active; open controls to stop');
+  document.querySelector('.topbar .spacer').after(recordBadge);
+
+  function drawRecording(data) {
+    recording = data;
+    const running = data.state === 'recording', stopping = data.state === 'stopping';
+    recordButton.textContent = running ? '■ Stop recording' : stopping ? 'Saving…' : '● Record screen';
+    recordButton.disabled = recordingPending || stopping || data.uploading || !data.supported;
+    sendButton.textContent = data.uploading ? 'Sending…' : data.last?.sent ? 'Sent to Discord ✓' : 'Send to Discord';
+    sendButton.disabled = recordingPending || running || stopping || data.uploading || !data.discord_configured || !data.last || data.last.sent || data.last.size > 9 * 1024 * 1024;
+    const elapsed = Math.floor(data.elapsed || 0);
+    const timer = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
+    recordBadge.hidden = !running && !stopping;
+    recordBadge.textContent = stopping ? '● SAVING' : '● REC ' + timer;
+    if (running) recordInfo.textContent = 'Recording ' + timer + ' / 2:00 · no audio';
+    else if (stopping) recordInfo.textContent = 'Finishing MP4…';
+    else if (data.error || data.upload_error) recordInfo.textContent = data.error || data.upload_error;
+    else if (data.last) recordInfo.textContent = data.last.filename + ' · ' + bytes(data.last.size) + (data.discord_configured ? '' : ' · Discord not configured');
+    else recordInfo.textContent = data.supported ? 'MP4 · up to 2 min · no audio' + (data.discord_configured ? '' : ' · Discord not configured') : 'Screen recording unavailable on this device.';
+    if (!data.uploading && controlStatus.textContent === 'Sending the finished clip to Discord…') {
+      controlStatus.textContent = data.last?.sent ? 'Recording sent to Discord.' : data.upload_error || 'Upload finished.';
+    }
+  }
+  function scheduleRecording() {
+    clearTimeout(recordingTimer);
+    if (local) recordingTimer = setTimeout(refreshRecording, recording?.state === 'recording' || recording?.state === 'stopping' || recording?.uploading ? 1000 : 5000);
+  }
+  async function refreshRecording() {
+    if (!local) { recordInfo.textContent = 'Record from the device touchscreen.'; return; }
+    const request = ++recordingRequest;
+    try {
+      const data = await device('recording');
+      if (request === recordingRequest && !recordingPending) drawRecording(data);
+    } catch (_) {
+      if (request === recordingRequest) {
+        recordButton.disabled = sendButton.disabled = true;
+        recordInfo.textContent = 'Recorder unavailable. Reopen controls to retry.';
+      }
+    } finally { if (request === recordingRequest && !recordingPending) scheduleRecording(); }
+  }
+  async function recordingAction(action) {
+    if (recordingPending) return;
+    const filename = recording?.last?.filename;
+    recordingPending = true; recordingRequest++; clearTimeout(recordingTimer);
+    recordButton.disabled = sendButton.disabled = true;
+    if (action === 'record_start' || action === 'record_stop') {
+      closeControls();
+      await new Promise(resolve => setTimeout(resolve, 220));
+    }
+    try {
+      const response = await device('control', { action, ...(action === 'record_send' ? { value: filename } : {}) });
+      recordingPending = false; drawRecording(response.result);
+      if (action === 'record_send') controlStatus.textContent = 'Sending the finished clip to Discord…';
+    } catch (error) {
+      recordingPending = false;
+      recordInfo.textContent = error.message; message(error.message);
+    } finally { recordingPending = false; scheduleRecording(); }
+  }
+  refreshRecording();
   let previousFocus = null, keyboardWasShown = false, controlAbort = null, controlTimer, muted = false, mutePending = false;
   const toggle = button('⌄', () => openControls(), 'btn-gear deck-toggle'); toggle.setAttribute('aria-label', 'Open quick controls'); toggle.setAttribute('aria-expanded', 'false');
   panel.id = 'deck-controls'; toggle.setAttribute('aria-controls', panel.id);
@@ -244,6 +312,7 @@
     screenshotButton.disabled = muteButton.disabled = true;
     for (const ui of Object.values(controls)) ui.input.disabled = true;
     closeButton.focus(); controlAbort = new AbortController(); refreshControls();
+    if (!recordingPending) refreshRecording();
   }
   function closeControls(restore = true) {
     if (shade.hidden) return;

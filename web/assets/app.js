@@ -29,8 +29,8 @@ function initTelemetry() {
     try {
       const j = await fetch("/api/sysinfo?t=" + Date.now()).then(r => r.json());
       const i = j.info || j;
-      if (i.ssid) { miss = 0; lastNet = i.ssid + " · " + (i.ip || "--"); }
-      else if (++miss > 3) { lastNet = "no-wifi · " + (i.ip || "--"); }
+      if (i.ssid) { miss = 0; lastNet = i.ssid; }
+      else if (++miss > 3) { lastNet = "no-wifi"; }
       if (i.temp) lastTmp = i.temp + "°C";
       if (net && lastNet) net.textContent = lastNet;
       if (tmp && lastTmp) tmp.textContent = lastTmp;
@@ -299,8 +299,10 @@ function showSettings() {
   refreshOta(otaMeta, otaLog, otaUpd, otaCheck, otaBar, otaFill);
   aptStatus(aptMeta, aptBtn, aptLog, aptBar, aptFill);
 
-  Promise.all([api("/api/network"), api("/api/wifi/scan")]).then(([net, scan]) => {
+  api("/api/network").then(net => {
     renderNetworkInfo(infoBody, net.info);
+  }).catch(() => { infoBody.textContent = "Device info unavailable"; });
+  api("/api/wifi/scan").then(scan => {
     if (!scan.error) {
       wifiNets = scan.networks;
       renderNetList(netList, scan.networks, statusRow);
@@ -475,7 +477,7 @@ function renderNetworkInfo(body, info) {
   const rows = [
     ["Hostname", info.hostname],
     ["OS", info.os],
-    ["IP", info.ip || "—"],
+    ["IP address", info.ip || "—"],
     ["Kernel", info.kernel],
     ["Arch", info.arch],
     ["Uptime", info.uptime || "—"],

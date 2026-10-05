@@ -10,6 +10,7 @@ import subprocess
 import threading
 import time
 import uuid
+from recording import RECORDINGS
 
 
 def run(args, **kwargs):
@@ -119,6 +120,12 @@ class Device:
             return self.cached
 
     def control(self, action, value=None):
+        if action == 'record_start':
+            return RECORDINGS.start()
+        if action == 'record_stop':
+            return RECORDINGS.stop()
+        if action == 'record_send':
+            return RECORDINGS.send(value)
         with self.lock:
             if action == 'brightness':
                 value = max(10, percent(value))
@@ -168,7 +175,7 @@ DEVICE = Device()
 
 
 def handle_device_request(handler, method, path):
-    if path not in ('/api/device/status', '/api/device/control'):
+    if path not in ('/api/device/status', '/api/device/control', '/api/device/recording'):
         return False
     def reply(code, **body):
         handler._send(code, json.dumps(body).encode()); return True
@@ -177,6 +184,8 @@ def handle_device_request(handler, method, path):
             or handler.headers.get('Origin') not in ('http://127.0.0.1:8080', 'http://localhost:8080')):
         return reply(403, error='Device controls are available on the touchscreen only.')
     try:
+        if method == 'GET' and path.endswith('/recording'):
+            return reply(200, **RECORDINGS.status())
         if method == 'GET' and path.endswith('/status'):
             return reply(200, **DEVICE.status())
         if method != 'POST' or not path.endswith('/control'):

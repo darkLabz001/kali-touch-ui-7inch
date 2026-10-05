@@ -54,6 +54,10 @@
 .deck-shortcuts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
 .deck-shortcuts .deck-button { min-height: 55px; }
 .deck-control-status { margin-top: 12px; min-height: 18px; color: #99b5c9; font-size: 12px; }
+.deck-recorder { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; }
+.deck-record-info { grid-column: 1 / -1; font-size: 11px; color: #99b5c9; overflow-wrap: anywhere; }
+.deck-record-badge { flex-shrink: 0; border: 1px solid #a64d4d; border-radius: 8px; background: #391c23; color: #ff9a9a; min-height: 38px; padding: 4px 8px; font: 11px monospace; }
+.deck-record-badge[hidden] { display: none; }
 .deck-toast { position: fixed; bottom: 12px; left: 12px; right: 12px; z-index: 250; background: #163527; color: #ddffe9; border: 1px solid #448768; border-radius: 10px; padding: 12px; font-size: 13px; overflow-wrap: anywhere; box-shadow: 0 6px 22px #0008; }
 @media (max-width: 600px) {
   .deck-grid { grid-template-columns: 1fr; }
@@ -67,4 +71,8 @@
 @media (prefers-reduced-motion: reduce) {
   .deck-controls { animation: none; }
   .deck-meter > div { transition: none; }
+}
+@media (max-height: 420px) and (max-width: 740px) {
+  .deck-recorder { margin-top: 4px; gap: 3px 6px; }
+  .deck-record-info { font-size: 10px; line-height: 12px; }
 }

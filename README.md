@@ -314,6 +314,13 @@ Use `example.org` as its argument, or run it without arguments and enter a domai
 with **Send**. It saves text and JSON reports in `/home/kali/payloads/reports/`.
 See the [payload guide](payloads/README.md#domain-osint) for options and sources.
 
+The included [`web_surface_mapper.py`](payloads/web_surface_mapper.py) payload
+crawls a website, discovers JavaScript routes and forms, and checks common admin,
+API and backup paths. Upload it through **My Scripts → Add .py file**, then use
+the full target URL as its argument. It saves text and JSON reports and keeps
+requests on the selected origin. See the
+[Web Surface Mapper guide](payloads/README.md#web-surface-mapper) for limits and options.
+
 ## WiFite and the touch terminal
 
 At 800×480, the terminal uses a compact layout with its input and control keys on
@@ -399,6 +406,30 @@ app sessions; it does not claim to enumerate every Linux process.
 - Keyboard show/hide for the current text field, preserving draft terminal input.
 - Screenshot: closes the panel and saves the screen under
   `~/Pictures/KaliTouch/` on the device.
+- Record screen / Stop recording: saves a silent MP4 under `~/Videos/KaliTouch/`.
+  A red REC timer stays visible in the top bar; tap it to reopen the controls.
+  Capture uses the full desktop at 15 fps, stops after two minutes or near 9 MiB,
+  and finalizes the MP4 before enabling sharing. Requires FFmpeg with libx264,
+  ffprobe, xrandr, and the active X11 desktop. At least 100 MiB free space is required.
+- Send to Discord: uploads the latest finished recording only when tapped.
+  Its filename and size appear below the buttons. Previously sent clips cannot
+  be resent accidentally, and upload failures keep the local file for retry.
+
+The device IP appears under **Settings → Device info**, rather than in the top
+status line or Dashboard, so ordinary screen recordings do not show it there.
+The recorder captures whatever you open, including Settings or terminal output.
+
+To configure recording uploads, store the Discord webhook URL in
+`~/.config/kali-touch-ui/discord-webhook` on the device, owned by the device user
+with mode `0600`. The existing GitHub webhook URL is accepted: the recorder uses
+its normal attachment endpoint without the `/github` suffix. The configuration
+stays outside the source tree and is never returned to the browser. Do not put
+the URL in this repository. Uploads use Discord's
+[multipart webhook API](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+with delivery confirmation and mentions disabled. No recording is sent automatically.
+Clips and the latest-recording metadata are private to the device user and
+remain after restarting the helper service. The menu shares the latest completed
+clip; earlier clips remain in `~/Videos/KaliTouch/`.
 
 Swipe up on the panel heading, tap **Done**, or tap outside it to return.
 Unavailable hardware controls are disabled. Brightness and audio changes apply
@@ -415,11 +446,12 @@ Remote browser visits retain the tool menus; hardware controls and detailed
 metrics require opening the UI on the touchscreen.
 
 The separate frontend files are `web/assets/dashboard.js` and `dashboard.css`.
-Copy `backend/device.py` and the updated `backend/entertainment.py` alongside them,
+Copy `backend/device.py`, `backend/recording.py`, and the updated `backend/entertainment.py` alongside them,
 then restart only `touchui-entertainment` while the Social browser is closed.
 The main Kali backend does not need to restart for this update.
 
 ```bash
 python3 tests/test_device.py
+python3 -m unittest discover -s tests -p test_recording.py
 python3 tests/dashboard_test.py  # Playwright + Chromium; all controls mocked
 ```
