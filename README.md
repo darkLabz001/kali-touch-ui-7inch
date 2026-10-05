@@ -489,3 +489,17 @@ the original repository needs a one-time migration before this updater fix appli
 Recon signal charts show the strongest three visible networks over a shared 60-second timeline. Tap a network label to isolate it; tap **Show strongest 3** to return. Missing or invalid signal readings leave gaps. Channel counts are shown as readable badges below the chart.
 
 The default Recon **Live channels** view positions every observed network by its channel and signal strength, with separate 2.4 GHz / 5 GHz controls. Tap a marker or network card to select it and view client counts and target controls. Observations refresh every three seconds while Recon is open. **Signal history** remains available as a separate view.
+
+## Update progress and failures
+
+**Settings → OTA Update** shows checking, downloading, applying, verifying,
+service setup, and restart stages. The download percentage comes from Git's
+streamed output; the overall bar advances at completed stages. A successful start
+is not treated as a successful update. Failures show their reason and offer Retry.
+Status is stored under `~/.local/state/kali-touch-ui/update.json` on the device,
+so restart completion and interrupted updates remain visible after reconnecting.
+JavaScript validation requires Node.js (`sudo apt-get install nodejs`). Python
+syntax checks do not write cache files into the installation. The updater installs
+the device helper service before restarting it, including on older 4-inch installs.
+
+WiFi status reports the connected radio independently of the USB scanning adapter.
