@@ -1124,3 +1124,19 @@ body::after {
 .mini-btn, .chip { transition: transform 0.06s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
 .mini-btn:active, .chip:active { transform: scale(0.95); }
 .mini-btn:hover, .chip.on { box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+
+/* Recon association map: branches connect observed APs to client nodes. */
+.re-tabs { flex-wrap: wrap; }
+.recon-map { padding: 12px; }
+.recon-branch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin: 14px 0; align-items: center; }
+.recon-node { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #247363; border-radius: 9px; background: #102b26; color: #d7fff2; text-align: left; overflow-wrap: anywhere; font: inherit; font-size: 12px; cursor: pointer; }
+.recon-node.selected { border-color: #39ff14; background: #174332; }
+.recon-node:focus-visible { outline: 2px solid #fff; }
+.recon-leaves { position: relative; display: grid; gap: 8px; border-left: 2px solid #247363; padding-left: 12px; }
+.recon-leaves::before { content: ""; position: absolute; left: -24px; top: 50%; width: 24px; border-top: 2px solid #247363; }
+.recon-loose { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.recon-target .ra-btnrow { flex-wrap: wrap; }
+.recon-target .mini-btn { min-height: 46px; }
+@media (max-width: 500px) { .recon-map { padding: 8px; } .recon-branch { gap: 16px; } .recon-leaves::before { left: -16px; width: 16px; } }
+.re-tabs button.chip { flex: 1; min-height: 46px; padding: 8px; border: 1px solid #247363; border-radius: 8px; background: #102b26; color: #a5d9c7; font: inherit; font-size: 12px; cursor: pointer; }
+.re-tabs button.chip.on { border-color: #39ff14; color: #d7fff2; background: #174332; }

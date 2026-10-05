@@ -1204,6 +1204,7 @@ let reconTimer = null;
 let reconFilter = { band: "all", sec: "all" };
 let reconTab = "aps";
 let reconOpen = null;
+let reconClient = null;
 let reconDirty = false;
 let reconSeries = {};
 let reconTrend = {};
@@ -1403,6 +1404,7 @@ function leaveRecon() {
   if (reconTimer) { clearInterval(reconTimer); reconTimer = null; }
   reconPageOpen = false;
   reconOpen = null;
+  reconClient = null;
   reconSeries = {};
   reconTrend = {};
 }
@@ -1432,9 +1434,81 @@ function el(tag, cls, text) {
   return e;
 }
 
+function reconSelect(ap, client = null) {
+  reconOpen = ap ? ap.bssid : null;
+  reconClient = client ? client.station : null;
+  reconDo(reconLast.st, reconLast.d, reconLast.lg);
+}
+
+function reconTargetActions(ap, client = null) {
+  const box = el("div", "ra-detail recon-target");
+  box.append(el("strong", null, client ? client.station : (ap.essid || "Hidden network")),
+    el("div", "ra-sub", client ? "Observed AP: " + (ap ? ap.bssid : "not observed") + " · Probes: " + (client.probes || "none") : ap.bssid + " · CH " + ap.channel));
+  const actions = el("div", "ra-btnrow");
+  const copy = el("button", "mini-btn", "Copy address");
+  copy.onclick = async () => {
+    try { await navigator.clipboard.writeText(client ? client.station : ap.bssid); copy.textContent = "Copied"; }
+    catch (_) { copy.textContent = "Copy unavailable"; }
+  };
+  actions.append(copy);
+  if (ap) {
+    const prepare = el("button", "mini-btn", "Open target controls");
+    prepare.onclick = () => {
+      leaveRecon(); showDeauth();
+      document.getElementById("deauth-bssid").value = ap.bssid;
+      document.getElementById("deauth-ch").value = ap.channel;
+      document.getElementById("deauth-client").value = client ? client.station : "";
+    };
+    actions.append(prepare);
+    if (client) {
+      const parent = el("button", "mini-btn", "View access point");
+      parent.onclick = () => { reconTab = "aps"; reconSelect(ap); };
+      actions.append(parent);
+    }
+  }
+  box.append(actions);
+  return box;
+}
+
+function reconMap(d) {
+  const map = el("div", "recon-map");
+  map.append(el("div", "ra-sub", "Observed associations · not physical locations · tap a node"));
+  const aps = d.aps.filter(reconMatch).slice().sort((a, b) => Number(b.power) - Number(a.power));
+  const known = new Set(d.aps.map(a => a.bssid.toUpperCase()));
+  const node = (label, key, selected, action) => {
+    const b = el("button", "recon-node" + (selected ? " selected" : ""), label);
+    b.dataset.node = key; b.onclick = action; b.setAttribute("aria-pressed", String(selected));
+    return b;
+  };
+  for (const ap of aps.slice(0, 40)) {
+    const clients = d.clients.filter(c => (c.bssid || "").toUpperCase() === ap.bssid.toUpperCase());
+    const branch = el("div", "recon-branch");
+    branch.append(node((ap.essid || "Hidden network") + " · CH " + ap.channel + " · " + ap.power + " dBm · " + clients.length + " clients",
+      ap.bssid, reconOpen === ap.bssid && !reconClient, () => reconSelect(ap)));
+    const leaves = el("div", "recon-leaves");
+    for (const client of clients.slice(0, 12)) leaves.append(node(client.station + " · " + client.power + " dBm", client.station,
+      reconClient === client.station, () => reconSelect(ap, client)));
+    if (!clients.length) leaves.append(el("div", "ra-sub", "No clients observed"));
+    if (clients.length > 12) leaves.append(el("div", "ra-sub", "+" + (clients.length - 12) + " more in Clients"));
+    branch.append(leaves); map.append(branch);
+  }
+  if (aps.length > 40) map.append(el("div", "ra-sub", "Showing 40 of " + aps.length + " access points; use filters or the list."));
+  const unmatched = d.clients.filter(c => !known.has((c.bssid || "").toUpperCase()));
+  if (unmatched.length) {
+    map.append(el("div", "ra-sub", "Unassociated / access point not observed"));
+    const loose = el("div", "recon-loose");
+    for (const c of unmatched.slice(0, 40)) loose.append(node(c.station, c.station, reconClient === c.station, () => reconSelect(null, c)));
+    if (unmatched.length > 40) loose.append(el("div", "ra-sub", "+" + (unmatched.length - 40) + " more in Clients"));
+    map.append(loose);
+  }
+  if (!aps.length && !unmatched.length) map.append(el("div", "re-empty", "No observations yet. Start a scan to populate the map."));
+  return map;
+}
+
 function reconRows(st, d) {
   const t = reconTab;
   const no = el("div", "re-empty", "no data yet");
+  if (t === "map") return [reconMap(d)];
   if (t === "aps") {
     const aps = d.aps.filter(reconMatch)
       .sort((a, b) => (parseInt(b.power, 10) || -100) - (parseInt(a.power, 10) || -100));
@@ -1457,7 +1531,7 @@ function reconRows(st, d) {
       t1.append(s, arr, essid, ch, sec, cl);
       const t2 = el("div", "ra-sub", ap.bssid + "  ·  " + (ap.speed || "-") + " Mb/s  ·  beacons " + (ap.beacons || "0"));
       row.append(t1, t2);
-      row.onclick = () => { reconOpen = reconOpen === ap.bssid ? null : ap.bssid; reconDirty = true; };
+      row.onclick = () => reconSelect(reconOpen === ap.bssid ? null : ap);
       out.push(row);
       if (reconOpen === ap.bssid) out.push(reconDetail(ap, d));
     }
@@ -1475,6 +1549,7 @@ function reconRows(st, d) {
     t1.append(s, mac, pk);
     const t2 = el("div", "ra-sub", "AP " + (c.bssid || "-") + "  ·  " + (c.probes ? "probes: " + c.probes : ""));
     row.append(t1, t2);
+    row.onclick = () => reconSelect(d.aps.find(a => a.bssid.toUpperCase() === (c.bssid || "").toUpperCase()), c);
     return row;
   });
 }
@@ -1549,9 +1624,20 @@ function reconDo(st, d, lg) {
   );
   const eye = st.running ? "scanning " + ifc + " · hop abg" : "press ▶ SCAN ON";
   hint.textContent = eye;
+  document.querySelectorAll(".re-tabs [data-recon-tab]").forEach(b => b.classList.toggle("on", b.dataset.reconTab === reconTab));
+  const focused = document.activeElement?.dataset.node;
   const rows = reconRows(st, d);
   table.innerHTML = "";
   for (const r of rows) table.appendChild(r);
+  const target = document.getElementById("re-target");
+  if (target) {
+    target.replaceChildren();
+    const client = d.clients.find(c => c.station === reconClient);
+    const ap = d.aps.find(a => a.bssid.toUpperCase() === (client ? client.bssid || "" : reconOpen || "").toUpperCase());
+    if (client || ap) target.append(reconTargetActions(ap, client));
+    else if (reconOpen || reconClient) target.append(el("div", "ra-sub", "Selected device is no longer in the scan."));
+  }
+  if (focused) [...table.querySelectorAll("[data-node]")].find(b => b.dataset.node === focused)?.focus({preventScroll: true});
   if (log) { log.textContent = lg.log.trim().split("\n").slice(-24).join("\n"); log.scrollTop = 1e9; }
   if (reconDirty) { reconDirty = false; }
 }
@@ -1562,6 +1648,7 @@ function showRecon() {
   document.querySelector(".btn-back").style.display = "flex";
   reconPageOpen = true;
   reconOpen = null;
+  reconClient = null;
   reconSeries = {};
   reconTrend = {};
   const c = document.querySelector(".content");
@@ -1625,11 +1712,12 @@ function showRecon() {
   page.appendChild(chips);
 
   const tabs = el("div", "re-tabs");
-  const tAP = el("button", "chip on", "▣ ACCESS POINTS");
-  const tCL = el("button", "chip", "◈ CLIENTS");
-  tAP.onclick = () => { reconTab = "aps"; tAP.classList.add("on"); tCL.classList.remove("on"); reconDo(reconLast.st, reconLast.d, reconLast.lg); };
-  tCL.onclick = () => { reconTab = "clients"; tCL.classList.add("on"); tAP.classList.remove("on"); reconDo(reconLast.st, reconLast.d, reconLast.lg); };
-  tabs.append(tAP, tCL);
+  for (const [value, label] of [["aps", "▣ ACCESS POINTS"], ["clients", "◈ CLIENTS"], ["map", "NETWORK MAP"]]) {
+    const tab = el("button", "chip" + (reconTab === value ? " on" : ""), label);
+    tab.dataset.reconTab = value;
+    tab.onclick = () => { reconTab = value; reconDo(reconLast.st, reconLast.d, reconLast.lg); };
+    tabs.append(tab);
+  }
   page.appendChild(tabs);
 
   const table = el("div", "re-table");
@@ -1637,6 +1725,7 @@ function showRecon() {
   const logBox = el("div", "re-log");
   logBox.id = "re-log";
   page.appendChild(table);
+  const target = el("div", "", ""); target.id = "re-target"; page.appendChild(target);
   page.appendChild(logBox);
 
   c.appendChild(page);
@@ -1651,6 +1740,7 @@ function showRecon() {
         fetch("/api/recon/data").then(r => r.json()),
         fetch("/api/recon/log").then(r => r.json()),
       ]);
+      if (!reconPageOpen) return;
       reconLast = { st, d, lg };
       reconDo(st, d, lg);
       reconSample();

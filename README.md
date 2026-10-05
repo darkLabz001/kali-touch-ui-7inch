@@ -455,3 +455,23 @@ python3 tests/test_device.py
 python3 -m unittest discover -s tests -p test_recording.py
 python3 tests/dashboard_test.py  # Playwright + Chromium; all controls mocked
 ```
+
+## Recon network map and target actions
+
+Open **Wireless → WiFi apps → Recon — PineAP**, start a scan, and select
+**Network Map**. Branches connect observed access points to their associated
+clients; these are radio observations, not physical locations or proof of a
+current connection. Clients without an observed access point appear separately.
+Band and security filters apply to access points in the map.
+
+Tap a map node or a row in **Access Points** / **Clients** to view target actions.
+**Copy address** copies its MAC address when browser clipboard access is available.
+**View access point** opens a client's parent network. **Open target controls**
+opens the existing Deauth Blaster with BSSID, channel, and optional client filled
+in; opening the controls does not run it. Selection follows scan refreshes.
+The map shows up to 40 access points and 12 clients per branch, with additional
+observations available in the lists. Scanning requires a compatible wireless adapter.
+
+```bash
+python3 tests/recon_map_test.py  # Playwright + Chromium; mocked observations, no radio writes
+```
