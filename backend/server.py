@@ -2727,7 +2727,7 @@ def ota_local_sha():
 
 
 def ota_remote_sha():
-    rc, out = _ota_sh("git ls-remote %s refs/heads/%s" % (OTA_REPO, OTA_BRANCH), 30)
+    rc, out = _ota_sh("git -C %s ls-remote %s refs/heads/%s" % (OTA_DIR, OTA_REPO, OTA_BRANCH), 30)
     if rc == 0:
         for line in out.splitlines():
             parts = line.split()
