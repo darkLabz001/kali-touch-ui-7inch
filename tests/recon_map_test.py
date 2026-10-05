@@ -87,6 +87,7 @@ def main():
             assert page.evaluate('reconTimer === null && !reconPageOpen')
             assert not writes, writes
             page.locator('#btn-back').tap()
+            expect(page.locator('.hub-card')).to_have_count(8)
             page.close()
         assert not errors, errors
         browser.close()

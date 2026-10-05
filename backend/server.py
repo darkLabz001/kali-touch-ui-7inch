@@ -972,7 +972,7 @@ class ReconManager:
             except OSError:
                 pass
         self.proc = subprocess.Popen(
-            ["sudo", "-n", "airodump-ng", "--band", "abg", "--write", RECON_DIR,
+            ["sudo", "-n", "airodump-ng", "--background", "1", "--update", "2", "--band", "abg", "--write", RECON_DIR,
              "--write-interval", "2", "--output-format", "csv", iface],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         threading.Thread(target=bounded_scan_log, args=(self.proc.stdout, RECON_DIR + "/scan.log"), daemon=True).start()

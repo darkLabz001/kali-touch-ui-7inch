@@ -1551,7 +1551,7 @@ function signalColor(p) {
   return "#7f1d1d";
 }
 
-function reconDo(st, d, lg) {
+function reconDo(st, d, lg, drawChart = true) {
   const hint = document.getElementById("recon-hint");
   const stats = document.getElementById("re-stats");
   const table = document.getElementById("re-table");
@@ -1593,7 +1593,7 @@ function reconDo(st, d, lg) {
     else if (reconOpen || reconClient) target.append(el("div", "ra-sub", "Selected device is no longer in the scan."));
   }
   if (focused) [...table.querySelectorAll("[data-node]")].find(b => b.dataset.node === focused)?.focus({preventScroll: true});
-  renderReconGraph(); renderReconLegend(); renderReconChstrip();
+  if (drawChart) { renderReconGraph(); renderReconLegend(); renderReconChstrip(); }
   if (log) { log.textContent = lg.log.trim().split("\n").slice(-24).join("\n"); log.scrollTop = 1e9; }
   if (reconDirty) { reconDirty = false; }
 }
@@ -1719,7 +1719,7 @@ function showRecon() {
       ]);
       if (!reconPageOpen) return;
       reconLast = { st, d, lg };
-      reconDo(st, d, lg);
+      reconDo(st, d, lg, false);
       reconSample();
     } catch (e) {}
   };
