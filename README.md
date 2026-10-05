@@ -475,3 +475,13 @@ observations available in the lists. Scanning requires a compatible wireless ada
 ```bash
 python3 tests/recon_map_test.py  # Playwright + Chromium; mocked observations, no radio writes
 ```
+
+## Update source
+
+This edition checks and downloads updates from
+`https://github.com/darkLabz001/kali-touch-ui-7inch.git`, branch `main`.
+The update fetch uses that repository directly, even if an older installation's
+`origin` still points at the original 4-inch repository. GitHub connection failures
+are shown as failed checks. Updates restart both the backend and the local device
+helper so dashboard controls load the updated code. An installation still running
+the original repository needs a one-time migration before this updater fix applies.

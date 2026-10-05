@@ -348,9 +348,9 @@ function refreshOta(meta, logBox, updBtn, chkBtn, bar, fill) {
       return;
     }
     hideProgressBar(bar, fill);
-    const st = s.up_to_date ? "up to date" : "update available";
+    const st = !s.remote ? "could not check GitHub — try again" : s.up_to_date ? "up to date" : "update available";
     meta.textContent = "v" + (s.version || "?") + " · local " + s.local_short + " · latest " + (s.remote_short || "—") + " · " + st;
-    updBtn.disabled = s.busy || s.up_to_date;
+    updBtn.disabled = s.busy || s.up_to_date || !s.remote;
     chkBtn.disabled = s.busy;
   }).catch(() => {
     meta.textContent = "backend unreachable";

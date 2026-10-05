@@ -2693,7 +2693,7 @@ def scan_aps():
 
 
 # ---------------- OTA update ----------------
-OTA_REPO = "https://github.com/darkLabz001/kali-touch-ui.git"
+OTA_REPO = "https://github.com/darkLabz001/kali-touch-ui-7inch.git"
 OTA_BRANCH = "main"
 OTA_DIR = "/opt/kali-touch-ui"
 OTA_LOG = "/tmp/ota.log"
@@ -2797,6 +2797,7 @@ def _ota_progress():
 def _ota_run():
     """Run the fetch/apply/syntax/restart cycle (called from a thread)."""
     global _ota_busy
+    restart = False
     try:
         with open(OTA_LOG, "w") as f:
             f.write("")
@@ -2804,17 +2805,20 @@ def _ota_run():
         if not ota_local_sha():
             _ota_log("install not set up for OTA (not a git repo)")
             return {"ok": False, "msg": "OTA not configured on this install"}
-        rc, out = _ota_sh("git -C %s fetch --progress origin" % OTA_DIR, 120)
+        rc, out = _ota_sh("git -C %s fetch --progress %s +refs/heads/%s:refs/remotes/touchui-update/%s" %
+                          (OTA_DIR, OTA_REPO, OTA_BRANCH, OTA_BRANCH), 120)
         if rc != 0:
             _ota_log("fetch FAILED: " + out[-200:])
             return {"ok": False, "msg": "fetch failed: " + out[-80:]}
         old = ota_local_sha()
-        remote = ota_remote_sha()
-        if remote and remote == old:
+        rc, remote = _ota_sh("git -C %s rev-parse refs/remotes/touchui-update/%s" % (OTA_DIR, OTA_BRANCH), 15)
+        if rc or not re.fullmatch(r"[0-9a-f]{40}", remote):
+            _ota_log("fetch FAILED: could not identify the downloaded update")
+            return {"ok": False, "msg": "downloaded update unavailable"}
+        if remote == old:
             _ota_log("already up to date (%s)" % old[:7])
             return {"ok": True, "msg": "already up to date"}
-        restart = False
-        rc, out = _ota_sh("git -C %s reset --hard origin/%s" % (OTA_DIR, OTA_BRANCH), 90)
+        rc, out = _ota_sh("git -C %s reset --hard %s" % (OTA_DIR, remote), 90)
         if rc != 0:
             _ota_log("reset FAILED: " + out[-200:])
             return {"ok": False, "msg": "apply failed: " + out[-80:]}
@@ -2847,8 +2851,8 @@ def _ota_run():
                 "pkill -f 'chrom[i]um.*--app=http://127.0.0.1:8080' 2>/dev/null; "
                 "if command -v systemd-run >/dev/null 2>&1; then "
                 "sudo -n systemd-run --collect --quiet --no-block sh -c "
-                "'sleep 2; systemctl restart kali-touchui'; "
-                "else sleep 2; sudo -n systemctl restart kali-touchui; fi",
+                "'sleep 2; systemctl restart touchui-entertainment kali-touchui'; "
+                "else sleep 2; sudo -n systemctl restart touchui-entertainment kali-touchui; fi",
                 shell=True,
             )
 
