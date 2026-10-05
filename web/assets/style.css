@@ -1140,3 +1140,6 @@ body::after {
 @media (max-width: 500px) { .recon-map { padding: 8px; } .recon-branch { gap: 16px; } .recon-leaves::before { left: -16px; width: 16px; } }
 .re-tabs button.chip { flex: 1; min-height: 46px; padding: 8px; border: 1px solid #247363; border-radius: 8px; background: #102b26; color: #a5d9c7; font: inherit; font-size: 12px; cursor: pointer; }
 .re-tabs button.chip.on { border-color: #39ff14; color: #d7fff2; background: #174332; }
+
+.recon-error { padding: 12px; margin: 8px 0; border: 1px solid #b96b47; border-radius: 8px; background: #382519; color: #ffd2b3; overflow-wrap: anywhere; }
+.recon-error[hidden] { display: none; }

@@ -20,6 +20,7 @@ def main():
                     if r.request.method == 'POST': writes.append(path)
                     result = {}
                     if path == 'api/tools': result = fixtures()
+                    elif path == 'api/recon/start': result = {'ok': False, 'msg': 'Connect a USB WiFi adapter.'}
                     elif path == 'api/recon/data': result = data
                     elif path == 'api/recon/state': result = {'running': True, 'iface': 'wlan1mon'}
                     elif path == 'api/recon/log': result = {'log': ''}
@@ -29,6 +30,11 @@ def main():
             page.goto('http://127.0.0.1:8080/')
             page.locator('#boot-splash').evaluate('(e)=>e.remove()')
             page.evaluate('showRecon()')
+            page.get_by_role('button', name='▶ SCAN ON', exact=True).tap()
+            expect(page.locator('#recon-error')).to_have_text('Connect a USB WiFi adapter.')
+            page.wait_for_timeout(3200)
+            expect(page.locator('#recon-error')).to_have_text('Connect a USB WiFi adapter.')
+            writes.clear()
             page.get_by_role('button', name='NETWORK MAP', exact=True).tap()
             expect(page.locator('.recon-branch')).to_have_count(1)
             expect(page.locator('.recon-leaves button')).to_have_count(1)

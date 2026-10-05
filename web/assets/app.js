@@ -1205,6 +1205,7 @@ let reconFilter = { band: "all", sec: "all" };
 let reconTab = "aps";
 let reconOpen = null;
 let reconClient = null;
+let reconError = "";
 let reconDirty = false;
 let reconSeries = {};
 let reconTrend = {};
@@ -1405,6 +1406,7 @@ function leaveRecon() {
   reconPageOpen = false;
   reconOpen = null;
   reconClient = null;
+  reconError = "";
   reconSeries = {};
   reconTrend = {};
 }
@@ -1624,6 +1626,8 @@ function reconDo(st, d, lg) {
   );
   const eye = st.running ? "scanning " + ifc + " · hop abg" : "press ▶ SCAN ON";
   hint.textContent = eye;
+  const scanError = document.getElementById("recon-error");
+  if (scanError) { scanError.textContent = reconError; scanError.hidden = !reconError; }
   document.querySelectorAll(".re-tabs [data-recon-tab]").forEach(b => b.classList.toggle("on", b.dataset.reconTab === reconTab));
   const focused = document.activeElement?.dataset.node;
   const rows = reconRows(st, d);
@@ -1649,6 +1653,7 @@ function showRecon() {
   reconPageOpen = true;
   reconOpen = null;
   reconClient = null;
+  reconError = "";
   reconSeries = {};
   reconTrend = {};
   const c = document.querySelector(".content");
@@ -1689,8 +1694,10 @@ function showRecon() {
     try {
       const r = await fetch("/api/recon/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const j = await r.json();
-      hint.textContent = j.ok ? "scanning " + j.msg : "✗ " + j.msg;
-    } catch (e) {}
+      reconError = j.ok ? "" : (j.msg || "Scan could not start.");
+      hint.textContent = j.ok ? "scanning " + j.msg : "✗ " + reconError;
+    } catch (e) { reconError = "Could not contact the scanner. Try again."; }
+    reconDo(reconLast.st, reconLast.d, reconLast.lg);
     on.classList.remove("busy"); on.textContent = "▶ SCAN ON";
   };
   bar.appendChild(on);
@@ -1700,6 +1707,9 @@ function showRecon() {
   };
   bar.appendChild(off);
   page.appendChild(bar);
+  const scanError = el("div", "recon-error");
+  scanError.id = "recon-error"; scanError.setAttribute("role", "alert"); scanError.hidden = true;
+  page.appendChild(scanError);
 
   const chips = el("div", "re-chip");
   const mk = (k, v, lab) => {

@@ -932,7 +932,7 @@ class ReconManager:
         HS.stop(crack=False)
         iface = self.available_iface(iface)
         if not iface:
-            return False, "no wireless card" + self.usb_hint()
+            return False, "Recon needs a separate monitor-mode WiFi adapter. No adapter detected; plug in your USB WiFi adapter and try again."
         self.stop()
         if not self._monitor(iface):
             self.stop()
