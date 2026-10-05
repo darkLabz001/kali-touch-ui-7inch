@@ -30,6 +30,33 @@ def main():
             page.goto('http://127.0.0.1:8080/')
             page.locator('#boot-splash').evaluate('(e)=>e.remove()')
             page.evaluate('showRecon()')
+            expect(page.locator('.re-chart-network')).to_have_count(1)
+            page.locator('.re-chart-network').tap()
+            expect(page.locator('.re-chart-reset')).to_have_text('Show all networks')
+            page.locator('.re-chart-reset').tap()
+            page.get_by_role('button', name='Signal history', exact=True).tap()
+            page.evaluate("""() => {
+              const ap = reconLast.d.aps[0];
+              reconSeries[ap.bssid] = Array.from({length:21}, (_,i)=>({time:Date.now()-60000+i*3000,value:-48+Math.sin(i/3)*4}));
+              renderReconGraph();
+            }""")
+            page.locator('#re-graph').screenshot(path=f'/tmp/recon-signal-{width}x{height}.png')
+            assert page.locator('#re-graph').get_attribute('aria-label').endswith('-48 dBm')
+            page.get_by_role('button', name='Live channels', exact=True).tap()
+            assert 'channel 6' in page.locator('#re-graph').get_attribute('aria-label')
+            point = page.evaluate('document.getElementById("re-graph")._reconHits[0]')
+            page.locator('#re-graph').tap(position={'x': point['x'], 'y': point['y']})
+            expect(page.locator('#re-target')).to_contain_text('<Lab WiFi>')
+            page.locator('.re-chart-reset').tap()
+            page.evaluate("""() => {
+              const base=reconLast.d.aps[0];
+              reconLast.d.aps=Array.from({length:30},(_,i)=>({...base,bssid:'AA:BB:CC:DD:EE:'+String(i).padStart(2,'0'),essid:'Lab '+i,channel:String(1+i%11),power:String(-35-i)}));
+              renderReconGraph();renderReconLegend();
+            }""")
+            expect(page.locator('.re-chart-network')).to_have_count(30)
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.locator('.re-top').screenshot(path=f'/tmp/recon-live-{width}x{height}.png')
+            page.evaluate('(ap) => { reconLast.d.aps=[ap]; renderReconGraph();renderReconLegend(); }', ap)
             page.get_by_role('button', name='▶ SCAN ON', exact=True).tap()
             expect(page.locator('#recon-error')).to_have_text('Connect a USB WiFi adapter.')
             page.wait_for_timeout(3200)

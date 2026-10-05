@@ -485,3 +485,7 @@ The update fetch uses that repository directly, even if an older installation's
 are shown as failed checks. Updates restart both the backend and the local device
 helper so dashboard controls load the updated code. An installation still running
 the original repository needs a one-time migration before this updater fix applies.
+
+Recon signal charts show the strongest three visible networks over a shared 60-second timeline. Tap a network label to isolate it; tap **Show strongest 3** to return. Missing or invalid signal readings leave gaps. Channel counts are shown as readable badges below the chart.
+
+The default Recon **Live channels** view positions every observed network by its channel and signal strength, with separate 2.4 GHz / 5 GHz controls. Tap a marker or network card to select it and view client counts and target controls. Observations refresh every three seconds while Recon is open. **Signal history** remains available as a separate view.

@@ -1206,199 +1206,150 @@ let reconTab = "aps";
 let reconOpen = null;
 let reconClient = null;
 let reconError = "";
+let reconGraphView = "channels";
+let reconGraphBand = "2.4";
 let reconDirty = false;
 let reconSeries = {};
 let reconTrend = {};
 const RECON_COLORS = ["#39ff14", "#00d9ff", "#ffb000", "#ff3bd3", "#ffe000", "#4cf0c0"];
 
+const reconColors = new Map();
 function reconColor(bssid) {
-  const keys = Object.keys(reconSeries);
-  const i = keys.indexOf(bssid);
-  if (reconPageOpen && i >= 0) return RECON_COLORS[i % RECON_COLORS.length];
-  return "#39ff14";
+  if (!reconColors.has(bssid)) reconColors.set(bssid, RECON_COLORS[reconColors.size % RECON_COLORS.length]);
+  return reconColors.get(bssid);
+}
+
+function reconSignal(ap) {
+  const value = Number(ap.power);
+  return Number.isFinite(value) && value <= -1 && value >= -110 ? value : null;
+}
+
+function reconChartNetworks() {
+  const aps = reconLast.d.aps.filter(reconMatch).filter(ap => reconSignal(ap) !== null);
+  if (reconOpen) return aps.filter(ap => ap.bssid === reconOpen);
+  return aps.sort((a, b) => reconSignal(b) - reconSignal(a)).slice(0, 3);
 }
 
 function reconSample() {
-  const cur = {};
-  for (const ap of reconLast.d.aps) cur[ap.bssid] = parseInt(ap.power, 10);
-  for (const b of Object.keys(cur)) if (!(b in reconSeries)) reconSeries[b] = [];
-  for (const k of Object.keys(reconSeries)) {
-    const s = reconSeries[k];
-    const v = (k in cur) ? cur[k] : NaN;
-    if (!(s.length && Number.isNaN(s[s.length - 1]) && Number.isNaN(v))) s.push(v);
-    if (s.length > 60) s.shift();
+  const now = Date.now();
+  const cur = new Map(reconLast.d.aps.map(ap => [ap.bssid, reconSignal(ap)]));
+  for (const key of cur.keys()) if (!reconSeries[key]) reconSeries[key] = [];
+  for (const key of Object.keys(reconSeries)) {
+    const series = reconSeries[key];
+    series.push({time: now, value: cur.get(key) ?? null});
+    while (series.length && series[0].time < now - 60000) series.shift();
+    if (!series.some(p => p.value !== null)) { delete reconSeries[key]; continue; }
+    const last = series.at(-1)?.value, previous = series.at(-2)?.value;
+    reconTrend[key] = last === null || previous == null ? "flat" : last - previous > 1.5 ? "up" : last - previous < -1.5 ? "down" : "flat";
   }
-  reconTrend = {};
-  for (const k of Object.keys(reconSeries)) {
-    const s = reconSeries[k];
-    if (s.length < 2 || Number.isNaN(s[s.length - 1]) || Number.isNaN(s[s.length - 2])) {
-      reconTrend[k] = "flat";
-    } else {
-      const d = s[s.length - 1] - s[s.length - 2];
-      reconTrend[k] = d > 1.5 ? "up" : (d < -1.5 ? "down" : "flat");
-    }
-  }
-  renderReconGraph();
-  renderReconLegend();
-  renderReconChstrip();
+  renderReconGraph(); renderReconLegend(); renderReconChstrip();
 }
 
 function renderReconGraph() {
+  document.querySelectorAll('[data-graph-view]').forEach(b => b.classList.toggle('on', b.dataset.graphView === reconGraphView));
+  document.querySelectorAll("[data-graph-band]").forEach(b => b.classList.toggle("on", reconGraphView === "channels" && b.dataset.graphBand === reconGraphBand));
+  if (reconGraphView === "history") { renderReconHistory(); return; }
+  const cv = document.getElementById("re-graph"); if (!cv) return;
+  const w = cv.clientWidth || 450, h = cv.clientHeight || 190, dpr = Math.min(window.devicePixelRatio || 1,2);
+  cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle = '#071512'; ctx.fillRect(0,0,w,h);
+  const L=48,R=16,T=30,B=30,pw=w-L-R,ph=h-T-B;
+  const min = reconGraphBand === '2.4' ? 1 : 32, max = reconGraphBand === '2.4' ? 14 : 177;
+  const X = ch => L+pw*(ch-min)/(max-min), Y = v => T+ph*(-20-Math.max(-100,Math.min(-20,v)))/80;
+  ctx.font='11px sans-serif'; ctx.textBaseline='middle';
+  for(const v of [-20,-40,-60,-80,-100]) {
+    ctx.strokeStyle='#234239';ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(w-R,Y(v));ctx.stroke();
+    ctx.fillStyle='#9cb9ad';ctx.textAlign='right';ctx.fillText(String(v),L-8,Y(v));
+  }
+  ctx.textAlign='left';ctx.fillStyle='#b8d6ca';ctx.fillText('Signal · dBm',L,13);
+  ctx.textAlign='right';ctx.fillText((reconLast.st.running?'LIVE':'STOPPED')+' · '+reconGraphBand+' GHz channels',w-R,13);
+  const channels = reconGraphBand === '2.4' ? [1,3,6,9,11,14] : [36,64,100,132,149,165];
+  ctx.textAlign='center'; for(const ch of channels) ctx.fillText(String(ch),X(ch),h-12);
+  const aps = reconLast.d.aps.filter(reconMatch).filter(ap=>scanBand(ap)===reconGraphBand && reconSignal(ap)!==null);
+  cv._reconHits=[];
+  ctx.save();ctx.beginPath();ctx.rect(L,T,pw,ph);ctx.clip();
+  for(const ap of aps.slice().sort((a,b)=>reconSignal(a)-reconSignal(b))) {
+    const x=X(Number(ap.channel)),y=Y(reconSignal(ap)),color=reconColor(ap.bssid);
+    ctx.globalAlpha=reconOpen && reconOpen !== ap.bssid ? 0.25 : 1;
+    ctx.strokeStyle=color;ctx.lineWidth=reconOpen===ap.bssid?3:1.5;
+    ctx.beginPath();ctx.moveTo(x,T+ph);ctx.lineTo(x,y);ctx.stroke();
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,reconOpen===ap.bssid?6:4,0,Math.PI*2);ctx.fill();
+    cv._reconHits.push({x,y,ap});
+  }
+  ctx.restore();ctx.globalAlpha=1;
+  if(!aps.length) {ctx.fillStyle='#b8d6ca';ctx.textAlign='center';ctx.fillText('No '+reconGraphBand+' GHz observations yet',w/2,T+ph/2);}
+  cv.setAttribute('aria-label',aps.length?aps.map(ap=>(ap.essid||ap.bssid)+': channel '+ap.channel+', '+ap.power+' dBm').join('; '):'No network observations');
+}
+
+function renderReconHistory() {
   const cv = document.getElementById("re-graph");
   if (!cv) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = cv.clientWidth || 450;
-  const h = cv.clientHeight || 150;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
-    cv.width = Math.round(w * dpr);
-    cv.height = Math.round(h * dpr);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth || 450, h = cv.clientHeight || 190;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#071512"; ctx.fillRect(0, 0, w, h);
+  const L = 48, R = 16, T = 30, B = 30, pw = w - L - R, ph = h - T - B;
+  const now = Date.now(), X = t => L + pw * (t - now + 60000) / 60000;
+  const Y = v => T + ph * (-20 - Math.max(-100, Math.min(-20, v))) / 80;
+  ctx.font = "11px sans-serif"; ctx.textBaseline = "middle";
+  for (const v of [-20, -40, -60, -80, -100]) {
+    ctx.strokeStyle = "#234239"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(w-R, Y(v)); ctx.stroke();
+    ctx.fillStyle = "#9cb9ad"; ctx.textAlign = "right"; ctx.fillText(String(v), L-8, Y(v));
   }
-  const ctx = cv.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "#050b08");
-  g.addColorStop(1, "#020604");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-  const L = 34, R = 6, T = 12, B = 8;
-  const pw = w - L - R, ph = h - T - B;
-  const yTop = -30, yBot = -95;
-  const Y = (v) => T + ((yTop - v) / (yTop - yBot)) * ph;
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  for (let v = -40; v >= -90; v -= 10) {
-    ctx.strokeStyle = "rgba(20,90,68,.30)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(L, Y(v));
-    ctx.lineTo(w - R, Y(v));
-    ctx.stroke();
-    ctx.fillStyle = "#3a8a6e";
-    ctx.font = "8px monospace";
-    ctx.fillText(String(v), L - 5, Y(v));
+  ctx.textAlign = "left"; ctx.fillStyle = "#b8d6ca"; ctx.fillText("Signal · dBm", L, 13);
+  ctx.textAlign = "right"; ctx.fillText(reconLast.st.running ? "LIVE · last 60 seconds" : "Scan stopped", w-R, 13);
+  for (const [age, label] of [[60,"60s ago"],[30,"30s ago"],[0,"Now"]]) {
+    ctx.textAlign = age === 60 ? "left" : age === 0 ? "right" : "center";
+    ctx.fillText(label, L + pw*(60-age)/60, h-12);
   }
-  ctx.fillStyle = "#1d5c47";
-  ctx.textAlign = "left";
-  for (let k = 1; k <= 5; k++) {
-    const x = L + (pw * k) / 6;
-    ctx.strokeStyle = "rgba(20,90,68,.12)";
-    ctx.beginPath();
-    ctx.moveTo(x, T);
-    ctx.lineTo(x, T + ph);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "#0f4a36";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(L, T, pw, ph);
-  ctx.fillStyle = "#1f6b50";
-  ctx.font = "8px monospace";
-  ctx.fillText("RSSI " + yTop + ".." + yBot + " dBm", L + 6, T - 5);
-  ctx.fillStyle = "#2f6f5a";
-  ctx.textAlign = "right";
-  ctx.fillText("~60s", w - R - 2, T - 5);
-  const keys = Object.keys(reconSeries);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  keys.forEach((k, i) => {
-    const pts = reconSeries[k];
-    const len = pts.length;
-    if (len < 2) return;
-    const path = new Path2D();
-    let started = false;
-    for (let j = 0; j < len; j++) {
-      const v = pts[j];
-      if (Number.isNaN(v)) { started = false; continue; }
-      const x = L + (pw * (j + 1)) / (len + 1);
-      const y = Y(v);
-      if (!started) { path.moveTo(x, y); started = true; }
-      else path.lineTo(x, y);
+  const networks = reconChartNetworks();
+  ctx.save(); ctx.beginPath(); ctx.rect(L,T,pw,ph); ctx.clip();
+  for (const ap of networks) {
+    const samples = reconSeries[ap.bssid] || [], color = reconColor(ap.bssid);
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.beginPath();
+    let previous = null;
+    for (const sample of samples) {
+      if (sample.value === null) { previous = null; continue; }
+      if (!previous || sample.time - previous.time > 6000) ctx.moveTo(X(sample.time),Y(sample.value));
+      else ctx.lineTo(X(sample.time),Y(sample.value));
+      previous = sample;
     }
-    const col = RECON_COLORS[i % RECON_COLORS.length];
-    ctx.strokeStyle = col;
-    ctx.globalAlpha = 0.16;
-    ctx.lineWidth = 4.5;
-    ctx.stroke(path);
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1.7;
-    ctx.stroke(path);
-    const last = pts[len - 1];
-    if (!Number.isNaN(last)) {
-      const x = L + (pw * len) / (len + 1);
-      const y = Y(last);
-      ctx.shadowColor = col;
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = "#d7ffe9";
-      ctx.beginPath();
-      ctx.arc(x, y, 2.4, 0, 7);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-  });
-  ctx.globalAlpha = 1;
+    ctx.stroke();
+    const last = samples.at(-1);
+    if (last && last.value !== null) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(Math.min(w-R-3,X(last.time)),Y(last.value),3,0,Math.PI*2); ctx.fill(); }
+  }
+  ctx.restore();
+  if (!networks.length) {
+    ctx.fillStyle = "#b8d6ca"; ctx.textAlign = "center";
+    ctx.fillText(reconLast.st.running ? "Waiting for signal observations…" : "Start a scan to see network signals", w/2, T+ph/2);
+  }
+  cv.setAttribute("aria-label", networks.length ? networks.map(ap => (ap.essid || ap.bssid)+": "+ap.power+" dBm").join("; ") : "No signal observations");
 }
 
 function renderReconLegend() {
-  const leg = document.getElementById("re-legend");
-  if (!leg) return;
-  leg.innerHTML = "";
-  const top = reconLast.d.aps.slice()
-    .sort((a, b) => (parseInt(b.power, 10) || -100) - (parseInt(a.power, 10) || -100))
-    .slice(0, 4);
-  for (const ap of top) {
-    const item = el("span", "re-leg");
-    const dot = el("span", "re-dot");
-    dot.style.background = reconColor(ap.bssid);
-    const name = ap.essid ? ap.essid : "hiddenssid";
-    const st = document.createElement("strong");
-    st.textContent = name.slice(0, 12) + " ";
-    const val = el("span", null, (ap.power || "??") + " dBm ");
-    const tr = reconTrend[ap.bssid] || "flat";
-    const arrow = el("span", "re-tr", tr === "up" ? "▲" : tr === "down" ? "▼" : "—");
-    arrow.style.color = tr === "up" ? "#39ff14" : tr === "down" ? "#ff4d4d" : "#5f8a7a";
-    item.append(dot, st, val, arrow);
-    leg.appendChild(item);
+  const leg = document.getElementById("re-legend"); if (!leg) return;
+  leg.replaceChildren();
+  const reset = el("button", "re-chart-reset", reconOpen ? "Show all networks" : reconGraphView === "history" ? "Strongest 3 · tap a network to isolate" : "Live networks · channel and signal · tap to select");
+  reset.onclick = () => reconSelect(null); leg.append(reset);
+  const networks = reconGraphView === "history" ? reconChartNetworks() : reconLast.d.aps.filter(reconMatch).filter(ap => scanBand(ap) === reconGraphBand).sort((a,b)=>Number(b.power)-Number(a.power));
+  for (const ap of networks) {
+    const item = el("button", "re-chart-network"); item.style.borderLeftColor = reconColor(ap.bssid);
+    item.append(el("strong", "", ap.essid || "Hidden · " + ap.bssid), el("span", "", ap.power + " dBm · CH " + ap.channel + " · " + reconLast.d.clients.filter(c => (c.bssid || "").toUpperCase() === ap.bssid.toUpperCase()).length + " clients"));
+    item.title = ap.bssid; item.onclick = () => reconSelect(ap); leg.append(item);
   }
 }
 
 function renderReconChstrip() {
-  const cv = document.getElementById("re-chstrip");
-  if (!cv) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = cv.clientWidth || 450;
-  const h = 20;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
-    cv.width = Math.round(w * dpr);
-    cv.height = Math.round(h * dpr);
+  const strip = document.getElementById("re-chstrip"); if (!strip) return;
+  strip.replaceChildren();
+  const counts = new Map();
+  for (const ap of reconLast.d.aps.filter(reconMatch)) {
+    const ch = Number(ap.channel); if (ch > 0) counts.set(ch,(counts.get(ch)||0)+1);
   }
-  const ctx = cv.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  const counts = {};
-  for (const ap of reconLast.d.aps) {
-    const ch = parseInt(ap.channel, 10);
-    if (!Number.isNaN(ch)) counts[ch] = (counts[ch] || 0) + 1;
-  }
-  const mid = w * 0.45;
-  const x24 = (ch) => 2 + ((ch - 1) / 14) * (mid - 4);
-  const x5 = (ch) => mid + ((ch - 36) / (165 - 36)) * (w - mid - 4);
-  ctx.font = "7px monospace";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "#1c4a3a";
-  ctx.fillText("2.4GHz", mid / 2, 0);
-  ctx.fillText("5GHz", mid + (w - mid) / 2, 0);
-  ctx.fillStyle = "#2f6f5a";
-  for (const ch of [1, 6, 11, 36, 100, 149, 165]) {
-    ctx.fillText(String(ch), ch <= 14 ? x24(ch) : x5(ch), 17);
-  }
-  for (const ch in counts) {
-    const c = parseInt(ch, 10);
-    const n = counts[ch];
-    const x = c <= 14 ? x24(c) : x5(c);
-    const bh = Math.min(12, 3 + n * 2.4);
-    ctx.fillStyle = "#39ff14";
-    ctx.fillRect(x - 1.5, 2 + (12 - bh), 3, bh);
-  }
+  strip.append(el("span", "ra-sub", "Networks per channel"));
+  for (const [ch,count] of [...counts].sort((a,b)=>a[0]-b[0])) strip.append(el("span", "re-channel-count", "CH " + ch + " · " + count));
+  if (!counts.size) strip.append(el("span", "ra-sub", "No channel observations"));
 }
 
 function leaveRecon() {
@@ -1642,6 +1593,7 @@ function reconDo(st, d, lg) {
     else if (reconOpen || reconClient) target.append(el("div", "ra-sub", "Selected device is no longer in the scan."));
   }
   if (focused) [...table.querySelectorAll("[data-node]")].find(b => b.dataset.node === focused)?.focus({preventScroll: true});
+  renderReconGraph(); renderReconLegend(); renderReconChstrip();
   if (log) { log.textContent = lg.log.trim().split("\n").slice(-24).join("\n"); log.scrollTop = 1e9; }
   if (reconDirty) { reconDirty = false; }
 }
@@ -1672,13 +1624,28 @@ function showRecon() {
   const gwrap = el("div", "re-top");
   const legend = el("div", "re-legend");
   legend.id = "re-legend";
-  gwrap.appendChild(legend);
+  const graphControls = el("div", "re-tabs");
+  for (const [view,label] of [["channels","Live channels"],["history","Signal history"]]) {
+    const b=el("button","chip",label);b.dataset.graphView=view;
+    b.onclick=()=>{reconGraphView=view;renderReconGraph();renderReconLegend();};graphControls.append(b);
+  }
+  for(const band of ["2.4","5"]) {
+    const b=el("button","chip",band+" GHz"); b.dataset.graphBand=band;
+    b.onclick=()=>{reconGraphBand=band;reconGraphView="channels";renderReconGraph();renderReconLegend();};graphControls.append(b);
+  }
+  gwrap.append(graphControls);
   const gcanvas = document.createElement("canvas");
   gcanvas.className = "re-graph";
   gcanvas.id = "re-graph";
-  gwrap.appendChild(gcanvas);
+  gcanvas.onclick = ev => {
+    if(reconGraphView!=="channels")return;
+    const box=gcanvas.getBoundingClientRect(),x=ev.clientX-box.left,y=ev.clientY-box.top;
+    const hit=(gcanvas._reconHits||[]).slice().sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
+    if(hit && Math.hypot(hit.x-x,hit.y-y)<24)reconSelect(hit.ap);
+  };
+  gwrap.append(gcanvas, legend);
   page.appendChild(gwrap);
-  const chcanvas = document.createElement("canvas");
+  const chcanvas = document.createElement("div");
   chcanvas.className = "re-chstrip";
   chcanvas.id = "re-chstrip";
   page.appendChild(chcanvas);

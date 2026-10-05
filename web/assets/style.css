@@ -1143,3 +1143,15 @@ body::after {
 
 .recon-error { padding: 12px; margin: 8px 0; border: 1px solid #b96b47; border-radius: 8px; background: #382519; color: #ffd2b3; overflow-wrap: anywhere; }
 .recon-error[hidden] { display: none; }
+
+.re-graph { width: 100%; height: 190px; display: block; border: 1px solid #234239; border-radius: 10px; }
+.re-legend { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-bottom: 8px; }
+.re-chart-reset { grid-column: 1 / -1; min-height: 44px; background: transparent; color: #b8d6ca; border: 0; text-align: left; font: inherit; font-size: 12px; }
+.re-chart-network { min-height: 52px; display: grid; gap: 4px; padding: 8px; background: #102b26; color: #e3fff3; border: 1px solid #234239; border-left-width: 4px; border-radius: 8px; text-align: left; font: inherit; font-size: 12px; min-width: 0; }
+.re-chart-network strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.re-chart-network span { font-size: 11px; color: #b8d6ca; }
+.re-chstrip { display: flex; flex-wrap: wrap; height: auto; gap: 8px; margin: 10px 0; }
+.re-channel-count { background: #102b26; padding: 6px 10px; border-radius: 6px; color: #b8d6ca; font-size: 12px; }
+@media(max-width:500px) { .re-legend { grid-template-columns: 1fr; } }
+
+.re-top .re-legend { margin: 8px 0; max-height: 155px; overflow-y: auto; align-content: start; }
