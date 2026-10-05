@@ -853,6 +853,31 @@ def parse_recon_csv(path):
     return {"aps": aps, "clients": clients}
 
 
+def bounded_scan_log(stream, path):
+    """Keep recent scanner output without filling the device's RAM-backed /tmp."""
+    recent = b""
+    last_write = 0
+    try:
+        with open(path, "wb") as log:
+            while True:
+                chunk = stream.read(8192)
+                if chunk:
+                    recent = (recent + chunk)[-65536:]
+                now = time.monotonic()
+                if not chunk or now - last_write >= 2:
+                    log.seek(0)
+                    log.write(recent)
+                    log.truncate()
+                    log.flush()
+                    last_write = now
+                if not chunk:
+                    break
+    except OSError:
+        pass
+    finally:
+        stream.close()
+
+
 class ReconManager:
     """PineAP-recon style scanner: airodump-ng in monitor mode with a live
     AP/client table and a rolling scan log."""
@@ -946,11 +971,11 @@ class ReconManager:
                 os.remove(f)
             except OSError:
                 pass
-        log = open(RECON_DIR + "/scan.log", "wb")
         self.proc = subprocess.Popen(
             ["sudo", "-n", "airodump-ng", "--band", "abg", "--write", RECON_DIR,
              "--write-interval", "2", "--output-format", "csv", iface],
-            stdout=log, stderr=subprocess.STDOUT)
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        threading.Thread(target=bounded_scan_log, args=(self.proc.stdout, RECON_DIR + "/scan.log"), daemon=True).start()
         self.iface = iface
         return True, iface
 
